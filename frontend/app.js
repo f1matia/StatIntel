@@ -135,7 +135,7 @@ function navigate(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
   $('pageCrumb').textContent = pageLabels[page] || page;
-  if (page === 'graph') renderGraph();
+  if (page === 'graph') { renderGraph(); initCopilotHandlers(); }
   if (page === 'skills') loadGaps();
   if (page === 'learning') loadCourses();
   if (page === 'roles') loadRoles();
@@ -757,78 +757,338 @@ $('addRoleBtn').onclick = () => openForm('Add role definition', [
 ], { grade: 'Not specified', review_status: 'Pending review' },
   async v => api('/api/roles', { method: 'POST', body: { ...v, required_skills: (v.required_skills || '').split(/[;|]/).map(s => s.trim()).filter(Boolean) } }));
 
-// ── Knowledge Graph ────────────────────────────────────────────────
+// ── Neural Network Graph & AI Cadre Copilot ──────────────────────────
+let activeNeuralNode = null;
+
 async function renderGraph() {
   try {
-    const graph = await api('/api/graph');
+    const [graph, allRoles] = await Promise.all([api('/api/graph'), api('/api/roles')]);
     const svg = $('graphSvg');
+    if (!svg) return;
+
     const r = graph.nodes.filter(n => n.type === 'role');
     const s = graph.nodes.filter(n => n.type === 'skill');
     const c = graph.nodes.filter(n => n.type === 'course');
+
+    // Populate Copilot selects
+    const roleSelect = $('copilotCurrentRole');
+    const targetSelect = $('copilotTargetRole');
+    if (roleSelect && targetSelect && (!roleSelect.children.length || !targetSelect.children.length)) {
+      const opts = r.map(x => `<option value="${esc(x.label)}">${esc(x.label)}</option>`).join('');
+      roleSelect.innerHTML = opts;
+      targetSelect.innerHTML = opts;
+      if (r.length > 1) targetSelect.selectedIndex = 1;
+    }
+
+    // Neural Coordinates (3-Layer Deep Architecture)
     const pos = {};
-    const viewH = 600;
-    r.forEach((n, i) => pos[n.id] = { x: 160, y: 55 + i * ((viewH - 80) / Math.max(r.length, 1)) });
-    s.forEach((n, i) => pos[n.id] = { x: 480, y: 40 + i * ((viewH - 60) / Math.max(s.length, 1)) });
-    c.forEach((n, i) => pos[n.id] = { x: 800, y: 65 + i * ((viewH - 100) / Math.max(c.length, 1)) });
+    const W = 1020, H = 660;
+    const xRole = 175, xSkill = 510, xCourse = 825;
 
-    let html = '';
-    html += '<text x="45" y="25" fill="#6b6f65" font-size="9" letter-spacing="2" font-weight="700">ROLES</text>';
-    html += '<text x="380" y="25" fill="#6b6f65" font-size="9" letter-spacing="2" font-weight="700">REQUIRED SKILLS</text>';
-    html += '<text x="700" y="25" fill="#6b6f65" font-size="9" letter-spacing="2" font-weight="700">LEARNING</text>';
+    r.forEach((n, i) => pos[n.id] = { x: xRole, y: 70 + i * ((H - 140) / Math.max(r.length - 1, 1)), layer: 1, idx: `x${i+1}` });
+    s.forEach((n, i) => pos[n.id] = { x: xSkill, y: 55 + i * ((H - 110) / Math.max(s.length - 1, 1)), layer: 2, idx: `h${i+1}` });
+    c.forEach((n, i) => pos[n.id] = { x: xCourse, y: 75 + i * ((H - 150) / Math.max(c.length - 1, 1)), layer: 3, idx: `y${i+1}` });
 
+    let svgHtml = `
+      <defs>
+        <pattern id="neuralDots" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2" r="1.2" fill="#203328" />
+        </pattern>
+        <filter id="neuralGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#neuralDots)" opacity="0.6"/>
+    `;
+
+    // Layer Headers
+    svgHtml += `
+      <g class="neural-headers" opacity="0.85">
+        <text x="${xRole}" y="32" text-anchor="middle" fill="#2dd4bf" font-size="10" font-weight="800" letter-spacing="2">INPUT LAYER &bull; CADRES</text>
+        <text x="${xSkill}" y="32" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="800" letter-spacing="2">HIDDEN LAYER &bull; COMPETENCIES</text>
+        <text x="${xCourse}" y="32" text-anchor="middle" fill="#818cf8" font-size="10" font-weight="800" letter-spacing="2">OUTPUT LAYER &bull; PATHWAYS</text>
+      </g>
+    `;
+
+    // Render Synapses (Edges)
     for (const e of graph.edges) {
       const a = pos[e.from], b = pos[e.to];
       if (!a || !b) continue;
-      const color = e.type === 'teaches' ? '#4a7d9e' : '#9e3523';
-      const dx = Math.abs(b.x - a.x) * 0.4;
-      html += `<path d="M ${a.x + 85} ${a.y} C ${a.x + 85 + dx} ${a.y}, ${b.x - 85 - dx} ${b.y}, ${b.x - 85} ${b.y}" fill="none" stroke="${color}" stroke-width="1.3" stroke-opacity="0.5" ${e.type === 'teaches' ? 'stroke-dasharray="5 4"' : ''}/>`;
+      const isTeaches = e.type === 'teaches';
+      const color = isTeaches ? '#818cf8' : '#2dd4bf';
+      const dx = Math.abs(b.x - a.x) * 0.45;
+      const pathId = `synapse-${e.from}-${e.to}`;
+      svgHtml += `<path class="synapse" id="${pathId}" data-from="${e.from}" data-to="${e.to}"
+        d="M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}"
+        fill="none" stroke="${color}" stroke-width="1.4" stroke-opacity="0.22" />`;
     }
 
+    // Render Neurons (Nodes)
     const all = [...r, ...s, ...c];
     all.forEach(n => {
       const p = pos[n.id];
       if (!p) return;
-      const color = n.type === 'role' ? '#3d7a5f' : n.type === 'course' ? '#4a7d9e' : '#a47730';
-      const w = 170;
+      const color = p.layer === 1 ? '#2dd4bf' : p.layer === 2 ? '#fbbf24' : '#818cf8';
       const label = n.label.length > 22 ? n.label.slice(0, 20) + '…' : n.label;
-      html += `<g data-graph-node="${esc(n.id)}" tabindex="0" role="button" style="cursor:pointer">
-        <rect x="${p.x - w / 2}" y="${p.y - 18}" width="${w}" height="36" rx="3" fill="${color}" fill-opacity=".08" stroke="${color}" stroke-opacity=".3"/>
-        <rect x="${p.x - w / 2}" y="${p.y - 18}" width="3" height="36" rx="1" fill="${color}"/>
-        <text x="${p.x}" y="${p.y}" text-anchor="middle" fill="#1a2420" font-size="10" font-weight="600">${esc(label)}</text>
-        <text x="${p.x}" y="${p.y + 13}" text-anchor="middle" fill="#6b6f65" font-size="8">${n.type.toUpperCase()}</text>
-      </g>`;
+
+      let pillX, pillAnchor, textX;
+      if (p.layer === 1) {
+        pillX = p.x - 150; textX = p.x - 26; pillAnchor = 'end';
+      } else if (p.layer === 2) {
+        pillX = p.x - 85; textX = p.x; pillAnchor = 'middle';
+      } else {
+        pillX = p.x + 24; textX = p.x + 26; pillAnchor = 'start';
+      }
+
+      svgHtml += `
+        <g class="neuron-node" id="neuron-${n.id}" data-id="${n.id}" data-type="${n.type}" data-label="${esc(n.label)}" data-layer="${p.layer}">
+          <!-- Synaptic Glow Halo -->
+          <circle class="neuron-halo" cx="${p.x}" cy="${p.y}" r="21" fill="${color}" fill-opacity="0.08" stroke="${color}" stroke-opacity="0.3" stroke-width="1" />
+          <!-- Neuron Core -->
+          <circle class="neuron-core" cx="${p.x}" cy="${p.y}" r="13" fill="${color}" fill-opacity="0.95" stroke="#ffffff" stroke-width="1.2" />
+          <!-- Index Glyph -->
+          <text cx="${p.x}" cy="${p.y + 3.5}" text-anchor="middle" fill="#0d1511" font-size="8.5" font-weight="800">${p.idx}</text>
+          <!-- Label Pill -->
+          <g class="neuron-label-group">
+            <rect x="${p.layer === 1 ? p.x - 155 : p.layer === 3 ? p.x + 22 : p.x - 70}" y="${p.layer === 2 ? p.y + 16 : p.y - 12}"
+              width="${p.layer === 2 ? 140 : 130}" height="24" rx="3"
+              fill="#18231d" fill-opacity="0.92" stroke="${color}" stroke-opacity="0.35" stroke-width="0.8" />
+            <text x="${p.layer === 1 ? p.x - 90 : p.layer === 3 ? p.x + 87 : p.x}" y="${p.layer === 2 ? p.y + 31 : p.y + 3}"
+              text-anchor="middle" fill="#e2e8e0" font-size="9" font-weight="600">${esc(label)}</text>
+          </g>
+        </g>
+      `;
     });
 
-    svg.innerHTML = html;
+    svg.innerHTML = svgHtml;
 
-    $('graphDetail').innerHTML = `
-      <h2>Institutional relationship map</h2>
-      <p class="muted">${esc(graph.note)}</p>
-      <div class="detailrow"><b>${r.length}</b> role nodes</div>
-      <div class="detailrow"><b>${s.length}</b> skill nodes</div>
-      <div class="detailrow"><b>${c.length}</b> learning nodes</div>
-      <div class="detailrow"><b>${graph.edges.length}</b> stored relationships</div>
-      <p class="muted" style="margin-top:16px">Select a node to inspect its source and review status.</p>`;
+    // Neuron Click & Activation Listeners
+    svg.querySelectorAll('.neuron-node').forEach(g => {
+      const nid = g.dataset.id;
+      const ntype = g.dataset.type;
+      const nlabel = g.dataset.label;
 
-    svg.querySelectorAll('[data-graph-node]').forEach(g => {
-      const n = all.find(x => x.id === g.dataset.graphNode);
-      const select = () => {
-        $('graphDetail').innerHTML = `
-          <h2>${esc(n.label)}</h2>
-          <p><span class="priority ${n.source_status === 'Verified' ? 'low' : 'moderate'}">${esc(n.source_status || 'No review status')}</span></p>
-          <div class="detailrow"><b>Node type</b><p>${esc(n.type)}</p></div>
-          <div class="detailrow"><b>Source reference</b><p>${n.source_reference ? `<a href="${esc(n.source_reference)}" target="_blank" rel="noreferrer">${esc(n.source_reference)} →</a>` : 'No source attached'}</p></div>
-          <p class="muted" style="margin-top:14px">A relationship is not evidence that the competency standard is officially approved.</p>`;
+      g.onclick = () => {
+        activateNeuralCircuit(nid, graph, pos);
+        if (ntype === 'role') {
+          if ($('copilotCurrentRole')) $('copilotCurrentRole').value = nlabel;
+          triggerCopilotPathway(nlabel, $('copilotTargetRole')?.value || 'Senior Statistical Officer');
+        } else if (ntype === 'skill') {
+          triggerCopilotPathway($('copilotCurrentRole')?.value || 'Junior Statistical Officer', $('copilotTargetRole')?.value || 'Senior Statistical Officer', `Focus on learning roadmap for ${nlabel}`);
+        }
       };
-      g.onclick = select;
-      g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); } };
     });
+
+    // Reset button
+    const resetBtn = $('resetNeuralView');
+    if (resetBtn) {
+      resetBtn.onclick = () => resetNeuralActivation();
+    }
+
+    // Set default initial Copilot view if empty
+    if ($('copilotRoadmap') && $('copilotRoadmap').querySelector('h3')?.textContent.includes('Select a Cadre')) {
+      triggerCopilotPathway('Junior Statistical Officer', 'Senior Statistical Officer');
+    }
+
   } catch (e) {
-    $('graphDetail').textContent = e.message;
+    console.error('Neural graph render error:', e);
   }
 }
 
-$('refreshGraph').onclick = renderGraph;
+function activateNeuralCircuit(targetId, graph, pos) {
+  activeNeuralNode = targetId;
+  const svg = $('graphSvg');
+  if (!svg) return;
+
+  // Find connected nodes and synapses
+  const connectedNodes = new Set([targetId]);
+  const activeSynapses = new Set();
+
+  // Forward connections
+  graph.edges.forEach(e => {
+    if (e.from === targetId) {
+      activeSynapses.add(`synapse-${e.from}-${e.to}`);
+      connectedNodes.add(e.to);
+      // Secondary forward (e.g. Role -> Skill -> Course)
+      graph.edges.forEach(e2 => {
+        if (e2.from === e.to) {
+          activeSynapses.add(`synapse-${e2.from}-${e2.to}`);
+          connectedNodes.add(e2.to);
+        }
+      });
+    }
+  });
+
+  // Backward connections (if skill or course clicked)
+  graph.edges.forEach(e => {
+    if (e.to === targetId) {
+      activeSynapses.add(`synapse-${e.from}-${e.to}`);
+      connectedNodes.add(e.from);
+      // Secondary backward
+      graph.edges.forEach(e2 => {
+        if (e2.to === e.from) {
+          activeSynapses.add(`synapse-${e2.from}-${e2.to}`);
+          connectedNodes.add(e2.from);
+        }
+      });
+    }
+  });
+
+  // Update SVG DOM classes
+  svg.querySelectorAll('.synapse').forEach(s => {
+    const isAct = activeSynapses.has(s.id);
+    s.classList.toggle('synapse-firing', isAct);
+    s.classList.toggle('dimmed', !isAct);
+  });
+
+  svg.querySelectorAll('.neuron-node').forEach(n => {
+    const isTarget = n.dataset.id === targetId;
+    const isConn = connectedNodes.has(n.dataset.id);
+    n.classList.toggle('neuron-firing', isTarget);
+    n.classList.toggle('neuron-activated', isConn && !isTarget);
+    n.classList.toggle('dimmed', !isConn);
+  });
+}
+
+function resetNeuralActivation() {
+  activeNeuralNode = null;
+  const svg = $('graphSvg');
+  if (!svg) return;
+  svg.querySelectorAll('.synapse').forEach(s => {
+    s.classList.remove('synapse-firing', 'dimmed');
+  });
+  svg.querySelectorAll('.neuron-node').forEach(n => {
+    n.classList.remove('neuron-firing', 'neuron-activated', 'dimmed');
+  });
+}
+
+// ── AI Copilot Pathway & Chat Controller ────────────────────────────
+async function triggerCopilotPathway(currentRole, targetRole, query = '') {
+  const roadmapEl = $('copilotRoadmap');
+  const sourcesEl = $('copilotSourcesArea');
+  if (!roadmapEl) return;
+
+  roadmapEl.innerHTML = `
+    <div style="padding:14px;text-align:center;color:var(--muted)">
+      <div style="font-size:18px;margin-bottom:6px">⚡</div>
+      <b>Consulting StatIntel AI Cadre Engine…</b>
+      <p style="font-size:10px;margin-top:4px">Synthesizing civil service standards, syllabus delta, and verified sources.</p>
+    </div>
+  `;
+  if (sourcesEl) sourcesEl.innerHTML = '';
+
+  try {
+    const res = await api('/api/ai/career-copilot', {
+      method: 'POST',
+      body: {
+        current_role: currentRole,
+        target_role: targetRole,
+        message: query
+      }
+    });
+
+    if (res.status === 'success') {
+      renderCopilotOutput(res);
+    } else {
+      roadmapEl.innerHTML = `<p class="error">Copilot: ${esc(res.detail || 'Unable to generate pathway')}</p>`;
+    }
+  } catch (err) {
+    roadmapEl.innerHTML = `<p class="error">Copilot error: ${esc(err.message)}</p>`;
+  }
+}
+
+function renderCopilotOutput(data) {
+  const roadmapEl = $('copilotRoadmap');
+  const sourcesEl = $('copilotSourcesArea');
+  if (!roadmapEl) return;
+
+  // Format markdown in narrative
+  let md = data.ai_analysis || '';
+  let html = md
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
+    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^\* (.*$)/gim, '<li>$1</li>')
+    .replace(/<\/li>\n<li>/g, '</li><li>');
+
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+  roadmapEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)">
+      <span class="badge ${data.mode === 'live_gemini' ? 'badge-green' : 'badge-blue'}">${data.mode === 'live_gemini' ? 'Google Gemini AI' : 'Cadre AI Intelligence'}</span>
+      <small style="color:var(--muted)">Est. Duration: ${esc(data.estimated_duration)}</small>
+    </div>
+    ${html}
+  `;
+
+  // Render Verified Learning Sources
+  if (sourcesEl && data.verified_sources?.length) {
+    let sHtml = `
+      <h4 style="margin:16px 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--ink)">
+        Verified Official Sources to Learn From:
+      </h4>
+      <div class="sources-grid">
+    `;
+
+    data.verified_sources.forEach(s => {
+      sHtml += `
+        <div class="source-card">
+          <div class="source-card-top">
+            <h4>${esc(s.title)}</h4>
+            <span class="source-provider">${esc(s.provider)}</span>
+          </div>
+          <p><b>Focus:</b> ${esc(s.focus)} &bull; <small style="color:var(--muted)">${esc(s.duration)}</small></p>
+          <a href="${esc(s.url)}" target="_blank" rel="noreferrer" class="source-link-btn">
+            Open Official Resource ↗
+          </a>
+        </div>
+      `;
+    });
+    sHtml += '</div>';
+    sourcesEl.innerHTML = sHtml;
+  }
+}
+
+// Bind Copilot controls
+document.addEventListener('DOMContentLoaded', () => {
+  initCopilotHandlers();
+});
+
+function initCopilotHandlers() {
+  const genBtn = $('copilotGenerateBtn');
+  if (genBtn) {
+    genBtn.onclick = () => {
+      const curr = $('copilotCurrentRole')?.value || 'Junior Statistical Officer';
+      const targ = $('copilotTargetRole')?.value || 'Senior Statistical Officer';
+      triggerCopilotPathway(curr, targ);
+    };
+  }
+
+  const chatForm = $('copilotChatForm');
+  if (chatForm) {
+    chatForm.onsubmit = e => {
+      e.preventDefault();
+      const inp = $('copilotChatInput');
+      const q = inp?.value.trim();
+      if (!q) return;
+      inp.value = '';
+      const curr = $('copilotCurrentRole')?.value || 'Junior Statistical Officer';
+      const targ = $('copilotTargetRole')?.value || 'Senior Statistical Officer';
+      triggerCopilotPathway(curr, targ, q);
+    };
+  }
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.onclick = () => {
+      const prompt = chip.dataset.prompt;
+      const curr = $('copilotCurrentRole')?.value || 'Junior Statistical Officer';
+      const targ = $('copilotTargetRole')?.value || 'Senior Statistical Officer';
+      triggerCopilotPathway(curr, targ, prompt);
+    };
+  });
+}
 
 // ── Downloads / Exports ────────────────────────────────────────────
 async function download(path, filename) {

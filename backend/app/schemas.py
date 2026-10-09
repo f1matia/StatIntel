@@ -72,3 +72,9 @@ class CourseInput(BaseModel):
     url: str = Field(default="", max_length=1000)
     source_reference: str = Field(default="", max_length=500)
     verified: bool = False
+
+class CopilotInput(BaseModel):
+    current_role: str = Field(default="Junior Statistical Officer", max_length=180)
+    target_role: Optional[str] = Field(default="Senior Statistical Officer", max_length=180)
+    skill_focus: Optional[str] = None
+    message: Optional[str] = None

@@ -10,13 +10,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 from .database import Base, engine, get_db, SessionLocal
 from .models import User, Officer, Skill, Role, RoleSkill, Course, AuditLog
-from .schemas import LoginInput, RegisterInput, UserUpdate, OfficerInput, SkillInput, RoleInput, CourseInput
+from .schemas import LoginInput, RegisterInput, UserUpdate, OfficerInput, SkillInput, RoleInput, CourseInput, CopilotInput
 from .security import hash_password, verify_password, create_token, current_user, require_admin
 from .analytics import (
     compute_workforce_analytics, compute_gap_severity, compute_competency_heatmap,
     compute_officer_readiness_profile, compute_descriptive_stats, build_histogram,
     _profile_mentions_skill, _normalize, SKILL_ALIASES,
 )
+from .llm import generate_career_pathway
 
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 
@@ -618,6 +619,19 @@ def export_pitch_dossier():
         pdf_path,
         media_type="application/pdf",
         filename="StatIntel_Executive_Pitch_and_Technical_Dossier.pdf"
+    )
+
+
+# ── AI Copilot ─────────────────────────────────────────────────────────────
+
+@app.post("/api/ai/career-copilot")
+def career_copilot(payload: CopilotInput, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return generate_career_pathway(
+        role_name=payload.current_role,
+        target_role=payload.target_role,
+        skill_focus=payload.skill_focus,
+        user_query=payload.message,
+        db=db
     )
 
 

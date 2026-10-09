@@ -588,14 +588,276 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .danger-text { color: var(--accent); }
 .empty { color: var(--muted); padding: 24px; text-align: center; white-space: normal; font-size: 12px; }
 
-/* ── Knowledge Graph ─────────────────────────────────────────────── */
-.graph-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; }
-.graph-panel { overflow: auto; }
-.graph-panel svg { width: 100%; min-width: 640px; display: block; }
-.graph-detail { padding: 20px; }
-.graph-detail p { font-size: 11px; line-height: 1.8; }
-.detailrow { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
-.detailrow b { margin-right: 6px; }
+/* ── Neural Network Graph & AI Copilot ───────────────────────────── */
+.neural-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(380px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+.neural-canvas-wrap {
+  background: #111a15;
+  border: 1px solid #2a3d32;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+.neural-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #16241d;
+  border-bottom: 1px solid #24382d;
+  font-size: 10px;
+}
+.neural-legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.neural-legend span { color: #cbd5cb; font-size: 10px; }
+.legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.legend-dot.input-dot { background: #2dd4bf; box-shadow: 0 0 6px rgba(45, 212, 191, 0.6); }
+.legend-dot.hidden-dot { background: #fbbf24; box-shadow: 0 0 6px rgba(251, 191, 36, 0.6); }
+.legend-dot.output-dot { background: #818cf8; box-shadow: 0 0 6px rgba(129, 140, 248, 0.6); }
+.neural-hint { color: #8fa093; font-size: 9.5px; font-style: italic; }
+
+/* SVG Neural Elements */
+.graph-panel svg {
+  width: 100%;
+  min-width: 680px;
+  display: block;
+  background: radial-gradient(circle at 50% 50%, #16241e 0%, #0d1511 100%);
+}
+
+.synapse {
+  transition: stroke 0.3s ease, stroke-width 0.3s ease, stroke-opacity 0.3s ease, opacity 0.3s ease;
+}
+.synapse.synapse-firing {
+  stroke-width: 2.6px !important;
+  stroke-opacity: 0.95 !important;
+  stroke-dasharray: 6 4;
+  animation: synapse-flow 0.8s linear infinite;
+}
+@keyframes synapse-flow {
+  from { stroke-dashoffset: 20; }
+  to { stroke-dashoffset: 0; }
+}
+
+.neuron-node {
+  cursor: pointer;
+  transition: transform 0.25s ease, opacity 0.3s ease;
+}
+.neuron-node:hover .neuron-core {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+.neuron-node.neuron-firing .neuron-core {
+  filter: drop-shadow(0 0 12px currentColor);
+}
+.neuron-halo {
+  transition: r 0.3s ease, stroke-opacity 0.3s ease, fill-opacity 0.3s ease;
+}
+.neuron-node.neuron-firing .neuron-halo {
+  r: 28px !important;
+  stroke-width: 2px !important;
+  stroke-opacity: 0.8 !important;
+}
+
+.dimmed {
+  opacity: 0.12 !important;
+}
+
+/* Copilot Panel */
+.copilot-panel {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  max-height: 720px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.copilot-header {
+  padding: 14px 18px;
+  background: #202d26;
+  color: #fff;
+  border-bottom: 1px solid #33443a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.copilot-header h2 {
+  font: 400 15px Georgia, serif;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.copilot-badge {
+  font-size: 8px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  padding: 3px 8px;
+  background: rgba(45, 212, 191, 0.2);
+  color: #2dd4bf;
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+.copilot-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+.copilot-controls {
+  background: var(--panel2);
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+}
+.copilot-controls label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.copilot-controls select {
+  margin-bottom: 10px;
+  background: #fff;
+}
+.copilot-roadmap {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 11px;
+  line-height: 1.65;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+.copilot-roadmap h3 {
+  font: 400 14px Georgia, serif;
+  color: var(--accent);
+  margin: 0 0 10px 0;
+}
+.copilot-roadmap h4 {
+  font-size: 11px;
+  color: var(--ink);
+  margin: 12px 0 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.copilot-roadmap ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.copilot-roadmap li { margin-bottom: 4px; }
+
+/* Source Cards */
+.sources-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+.source-card {
+  padding: 12px 14px;
+  background: var(--blue-light);
+  border: 1px solid #b2d2e3;
+  border-radius: var(--radius);
+  transition: transform var(--transition);
+}
+.source-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+.source-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.source-card h4 {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e3a4b;
+  margin: 0;
+}
+.source-provider {
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 2px 6px;
+  background: #d4e8f5;
+  color: #1e4e6b;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.source-card p {
+  font-size: 10px;
+  color: #3b5261;
+  margin: 0 0 8px 0;
+  line-height: 1.5;
+}
+.source-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+}
+.source-link-btn:hover {
+  text-decoration: underline;
+}
+
+/* Chat Input & Prompt Chips */
+.copilot-chat-footer {
+  padding: 12px 16px;
+  background: var(--panel2);
+  border-top: 1px solid var(--line);
+}
+.quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.chip {
+  font-size: 9px;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 4px 9px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.copilot-input-row {
+  display: flex;
+  gap: 8px;
+}
+.copilot-input-row input {
+  flex: 1;
+  font-size: 11px;
+}
 
 /* ── Reports ─────────────────────────────────────────────────────── */
 .report-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }

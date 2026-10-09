@@ -354,23 +354,64 @@
         </div>
       </section>
 
-      <!-- ═══════════ GRAPH PAGE ═══════════ -->
+      <!-- ═══════════ NEURAL GRAPH & AI COPILOT PAGE ═══════════ -->
       <section class="page" id="page-graph">
         <div class="page-head">
           <div>
-            <p class="eyebrow">RELATIONSHIP INTELLIGENCE</p>
-            <h1>Knowledge graph</h1>
-            <p class="muted">An inspectable graph of role requirements, skill links, and learning pathways.</p>
+            <p class="eyebrow">NEURAL CAPABILITY TOPOLOGY &bull; COGNITIVE CAREER PATHWAYS</p>
+            <h1>Neural Knowledge Network</h1>
+            <p class="muted">Interactive 3-layer neural architecture mapping Civil Service Cadres (Input Layer) &rarr; Latent Competencies (Hidden Layer) &rarr; Learning Interventions (Output Layer) with integrated AI Career Copilot.</p>
           </div>
-          <button class="secondary" id="refreshGraph">↻ Refresh graph</button>
+          <div class="button-row">
+            <button class="secondary" id="resetNeuralView">Reset Network</button>
+            <button class="secondary" id="refreshGraph">↻ Refresh Graph</button>
+          </div>
         </div>
-        <div class="graph-layout">
-          <article class="panel graph-panel">
-            <svg id="graphSvg" viewBox="0 0 960 600" role="img" aria-label="Role and skill relationship graph"></svg>
+        <div class="graph-layout neural-layout">
+          <article class="panel graph-panel neural-canvas-wrap">
+            <div class="neural-toolbar">
+              <div class="neural-legend">
+                <span class="legend-dot input-dot"></span><span>Layer 1: Cadre Nodes</span>
+                <span class="legend-dot hidden-dot"></span><span>Layer 2: Competency Neurons</span>
+                <span class="legend-dot output-dot"></span><span>Layer 3: Learning Pathways</span>
+              </div>
+              <span class="neural-hint">Tip: Click or hover any neuron to fire forward synaptic activation</span>
+            </div>
+            <svg id="graphSvg" viewBox="0 0 1020 660" role="img" aria-label="Neural capability network"></svg>
           </article>
-          <aside class="panel graph-detail" id="graphDetail">
-            <h2>Select a node</h2>
-            <p class="muted">Nodes and edges are derived from current database records.</p>
+          <aside class="panel graph-detail copilot-panel" id="graphDetail">
+            <div class="copilot-header">
+              <h2><span>🤖</span> StatIntel AI Cadre Copilot</h2>
+              <span class="copilot-badge">● Active &bull; Neural Grounded</span>
+            </div>
+            <div class="copilot-body" id="copilotBody">
+              <div class="copilot-controls">
+                <label>Current Cadre Post (Input)</label>
+                <select id="copilotCurrentRole"></select>
+                <label>Target Cadre / Goal (Output)</label>
+                <select id="copilotTargetRole"></select>
+                <button class="primary wide" id="copilotGenerateBtn">⚡ Generate Neural Career Pathway</button>
+              </div>
+              <div id="copilotResponseArea">
+                <div class="copilot-roadmap" id="copilotRoadmap">
+                  <h3>Select a Cadre or Neuron to Begin</h3>
+                  <p class="muted">Click on any role neuron on the left, or pick your starting and target cadre above, to fire the neural pathway and generate verified learning resources.</p>
+                </div>
+                <div id="copilotSourcesArea"></div>
+              </div>
+            </div>
+            <div class="copilot-chat-footer">
+              <div class="quick-chips">
+                <span class="chip" data-prompt="JSO to SSO Transition">⚡ JSO ➔ SSO Transition</span>
+                <span class="chip" data-prompt="Python & Sampling Roadmap">⚡ Python & Sampling Roadmap</span>
+                <span class="chip" data-prompt="ISS Cadre Fast-Track">⚡ ISS Group A Fast-Track</span>
+                <span class="chip" data-prompt="Verified Learning Sources">⚡ Verified Sources</span>
+              </div>
+              <form id="copilotChatForm" class="copilot-input-row">
+                <input id="copilotChatInput" placeholder="Ask AI Copilot about career pathways, sources..." autocomplete="off">
+                <button class="primary" type="submit">Ask</button>
+              </form>
+            </div>
           </aside>
         </div>
       </section>
