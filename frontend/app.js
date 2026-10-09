@@ -760,6 +760,45 @@ $('addRoleBtn').onclick = () => openForm('Add role definition', [
 // ── Neural Network Graph & AI Cadre Copilot ──────────────────────────
 let activeNeuralNode = null;
 
+const CADRE_ORDER = [
+  'Statistical Investigator',
+  'Junior Statistical Officer',
+  'Senior Statistical Officer',
+  'Assistant Director',
+  'Deputy Director',
+  'Director',
+  'ISS Officer'
+];
+
+function updateTargetOptions(currentRole, availableRoles = []) {
+  const targetSelect = $('copilotTargetRole');
+  if (!targetSelect) return;
+
+  const currIdx = CADRE_ORDER.findIndex(x => x.toLowerCase() === (currentRole || '').toLowerCase());
+  let higherRoles = [];
+
+  if (currIdx !== -1) {
+    // Only allow promotional transitions strictly higher in the cadre hierarchy
+    higherRoles = CADRE_ORDER.filter((r, idx) => idx > currIdx);
+  } else {
+    higherRoles = availableRoles.filter(r => r.toLowerCase() !== (currentRole || '').toLowerCase());
+  }
+
+  // If already at apex role, offer official executive specialization
+  if (!higherRoles.length) {
+    higherRoles = ['Senior Cadre Specialization', 'Principal Statistical Advisor'];
+  }
+
+  const prevValue = targetSelect.value;
+  targetSelect.innerHTML = higherRoles.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+
+  if (higherRoles.includes(prevValue)) {
+    targetSelect.value = prevValue;
+  } else {
+    targetSelect.selectedIndex = 0;
+  }
+}
+
 async function renderGraph() {
   try {
     const [graph, allRoles] = await Promise.all([api('/api/graph'), api('/api/roles')]);
@@ -769,15 +808,18 @@ async function renderGraph() {
     const r = graph.nodes.filter(n => n.type === 'role');
     const s = graph.nodes.filter(n => n.type === 'skill');
     const c = graph.nodes.filter(n => n.type === 'course');
+    const roleLabels = r.map(x => x.label);
 
-    // Populate Copilot selects
+    // Populate Copilot selects with dynamic promotion constraints
     const roleSelect = $('copilotCurrentRole');
     const targetSelect = $('copilotTargetRole');
     if (roleSelect && targetSelect && (!roleSelect.children.length || !targetSelect.children.length)) {
-      const opts = r.map(x => `<option value="${esc(x.label)}">${esc(x.label)}</option>`).join('');
-      roleSelect.innerHTML = opts;
-      targetSelect.innerHTML = opts;
-      if (r.length > 1) targetSelect.selectedIndex = 1;
+      roleSelect.innerHTML = roleLabels.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+      roleSelect.onchange = () => {
+        updateTargetOptions(roleSelect.value, roleLabels);
+        triggerCopilotPathway(roleSelect.value, targetSelect.value);
+      };
+      updateTargetOptions(roleSelect.value, roleLabels);
     }
 
     // Neural Coordinates (3-Layer Deep Architecture)
@@ -791,8 +833,8 @@ async function renderGraph() {
 
     let svgHtml = `
       <defs>
-        <pattern id="neuralDots" width="24" height="24" patternUnits="userSpaceOnUse">
-          <circle cx="2" cy="2" r="1.2" fill="#203328" />
+        <pattern id="neuralDots" width="22" height="22" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2" r="1.2" fill="#dcd6c8" />
         </pattern>
         <filter id="neuralGlow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="4" result="blur" />
@@ -802,12 +844,12 @@ async function renderGraph() {
       <rect width="100%" height="100%" fill="url(#neuralDots)" opacity="0.6"/>
     `;
 
-    // Layer Headers
+    // Layer Headers with warm editorial palette
     svgHtml += `
-      <g class="neural-headers" opacity="0.85">
-        <text x="${xRole}" y="32" text-anchor="middle" fill="#2dd4bf" font-size="10" font-weight="800" letter-spacing="2">INPUT LAYER &bull; CADRES</text>
-        <text x="${xSkill}" y="32" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="800" letter-spacing="2">HIDDEN LAYER &bull; COMPETENCIES</text>
-        <text x="${xCourse}" y="32" text-anchor="middle" fill="#818cf8" font-size="10" font-weight="800" letter-spacing="2">OUTPUT LAYER &bull; PATHWAYS</text>
+      <g class="neural-headers" opacity="0.95">
+        <text x="${xRole}" y="32" text-anchor="middle" fill="#2d6648" font-size="10.5" font-weight="800" letter-spacing="1.5">INPUT LAYER &bull; CADRE POSTS</text>
+        <text x="${xSkill}" y="32" text-anchor="middle" fill="#a47730" font-size="10.5" font-weight="800" letter-spacing="1.5">HIDDEN LAYER &bull; COMPETENCY NEURONS</text>
+        <text x="${xCourse}" y="32" text-anchor="middle" fill="#4a7d9e" font-size="10.5" font-weight="800" letter-spacing="1.5">OUTPUT LAYER &bull; VERIFIED CURRICULA</text>
       </g>
     `;
 
@@ -815,13 +857,11 @@ async function renderGraph() {
     for (const e of graph.edges) {
       const a = pos[e.from], b = pos[e.to];
       if (!a || !b) continue;
-      const isTeaches = e.type === 'teaches';
-      const color = isTeaches ? '#818cf8' : '#2dd4bf';
       const dx = Math.abs(b.x - a.x) * 0.45;
       const pathId = `synapse-${e.from}-${e.to}`;
       svgHtml += `<path class="synapse" id="${pathId}" data-from="${e.from}" data-to="${e.to}"
         d="M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}"
-        fill="none" stroke="${color}" stroke-width="1.4" stroke-opacity="0.22" />`;
+        fill="none" stroke="#d5cfbf" stroke-width="1.3" stroke-opacity="0.65" />`;
     }
 
     // Render Neurons (Nodes)
@@ -829,33 +869,24 @@ async function renderGraph() {
     all.forEach(n => {
       const p = pos[n.id];
       if (!p) return;
-      const color = p.layer === 1 ? '#2dd4bf' : p.layer === 2 ? '#fbbf24' : '#818cf8';
+      const color = p.layer === 1 ? '#2d6648' : p.layer === 2 ? '#a47730' : '#4a7d9e';
       const label = n.label.length > 22 ? n.label.slice(0, 20) + '…' : n.label;
-
-      let pillX, pillAnchor, textX;
-      if (p.layer === 1) {
-        pillX = p.x - 150; textX = p.x - 26; pillAnchor = 'end';
-      } else if (p.layer === 2) {
-        pillX = p.x - 85; textX = p.x; pillAnchor = 'middle';
-      } else {
-        pillX = p.x + 24; textX = p.x + 26; pillAnchor = 'start';
-      }
 
       svgHtml += `
         <g class="neuron-node" id="neuron-${n.id}" data-id="${n.id}" data-type="${n.type}" data-label="${esc(n.label)}" data-layer="${p.layer}">
-          <!-- Synaptic Glow Halo -->
-          <circle class="neuron-halo" cx="${p.x}" cy="${p.y}" r="21" fill="${color}" fill-opacity="0.08" stroke="${color}" stroke-opacity="0.3" stroke-width="1" />
+          <!-- Synaptic Halo -->
+          <circle class="neuron-halo" cx="${p.x}" cy="${p.y}" r="20" fill="${color}" fill-opacity="0.10" stroke="${color}" stroke-opacity="0.35" stroke-width="1" />
           <!-- Neuron Core -->
-          <circle class="neuron-core" cx="${p.x}" cy="${p.y}" r="13" fill="${color}" fill-opacity="0.95" stroke="#ffffff" stroke-width="1.2" />
+          <circle class="neuron-core" cx="${p.x}" cy="${p.y}" r="13" fill="${color}" fill-opacity="0.95" stroke="#ffffff" stroke-width="1.8" />
           <!-- Index Glyph -->
-          <text cx="${p.x}" cy="${p.y + 3.5}" text-anchor="middle" fill="#0d1511" font-size="8.5" font-weight="800">${p.idx}</text>
-          <!-- Label Pill -->
+          <text x="${p.x}" y="${p.y + 3.5}" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="800">${p.idx}</text>
+          <!-- Label Card -->
           <g class="neuron-label-group">
             <rect x="${p.layer === 1 ? p.x - 155 : p.layer === 3 ? p.x + 22 : p.x - 70}" y="${p.layer === 2 ? p.y + 16 : p.y - 12}"
               width="${p.layer === 2 ? 140 : 130}" height="24" rx="3"
-              fill="#18231d" fill-opacity="0.92" stroke="${color}" stroke-opacity="0.35" stroke-width="0.8" />
-            <text x="${p.layer === 1 ? p.x - 90 : p.layer === 3 ? p.x + 87 : p.x}" y="${p.layer === 2 ? p.y + 31 : p.y + 3}"
-              text-anchor="middle" fill="#e2e8e0" font-size="9" font-weight="600">${esc(label)}</text>
+              fill="#ffffff" fill-opacity="0.95" stroke="${color}" stroke-opacity="0.5" stroke-width="1" />
+            <text x="${p.layer === 1 ? p.x - 90 : p.layer === 3 ? p.x + 87 : p.x}" y="${p.layer === 2 ? p.y + 31 : p.y + 3.5}"
+              text-anchor="middle" fill="#1a2420" font-size="9.5" font-weight="700">${esc(label)}</text>
           </g>
         </g>
       `;
@@ -872,7 +903,10 @@ async function renderGraph() {
       g.onclick = () => {
         activateNeuralCircuit(nid, graph, pos);
         if (ntype === 'role') {
-          if ($('copilotCurrentRole')) $('copilotCurrentRole').value = nlabel;
+          if ($('copilotCurrentRole')) {
+            $('copilotCurrentRole').value = nlabel;
+            updateTargetOptions(nlabel, roleLabels);
+          }
           triggerCopilotPathway(nlabel, $('copilotTargetRole')?.value || 'Senior Statistical Officer');
         } else if (ntype === 'skill') {
           triggerCopilotPathway($('copilotCurrentRole')?.value || 'Junior Statistical Officer', $('copilotTargetRole')?.value || 'Senior Statistical Officer', `Focus on learning roadmap for ${nlabel}`);
@@ -949,6 +983,23 @@ function activateNeuralCircuit(targetId, graph, pos) {
     n.classList.toggle('neuron-activated', isConn && !isTarget);
     n.classList.toggle('dimmed', !isConn);
   });
+
+  // Update guide banner badge with circuit summary
+  const statusBadge = $('networkStatusBadge');
+  if (statusBadge) {
+    const targetNode = graph.nodes.find(n => n.id === targetId);
+    if (targetNode) {
+      const connSkills = Array.from(connectedNodes).map(id => graph.nodes.find(n => n.id === id)).filter(n => n && n.type === 'skill');
+      const connCourses = Array.from(connectedNodes).map(id => graph.nodes.find(n => n.id === id)).filter(n => n && n.type === 'course');
+      if (targetNode.type === 'role') {
+        statusBadge.innerHTML = `<strong>Active Circuit:</strong> ${esc(targetNode.label)} &rarr; ${connSkills.length} Required Competencies &rarr; ${connCourses.length} Curricula`;
+      } else if (targetNode.type === 'skill') {
+        statusBadge.innerHTML = `<strong>Competency Filter:</strong> ${esc(targetNode.label)} &bull; Linked to ${connCourses.length} Curricula`;
+      } else {
+        statusBadge.innerHTML = `<strong>Curriculum Node:</strong> ${esc(targetNode.label)}`;
+      }
+    }
+  }
 }
 
 function resetNeuralActivation() {
@@ -961,6 +1012,10 @@ function resetNeuralActivation() {
   svg.querySelectorAll('.neuron-node').forEach(n => {
     n.classList.remove('neuron-firing', 'neuron-activated', 'dimmed');
   });
+  const statusBadge = $('networkStatusBadge');
+  if (statusBadge) {
+    statusBadge.innerHTML = 'Interactive Network: Click any cadre post to activate neural pathway';
+  }
 }
 
 // ── AI Copilot Pathway & Chat Controller ────────────────────────────
@@ -1083,9 +1138,23 @@ function initCopilotHandlers() {
   document.querySelectorAll('.chip').forEach(chip => {
     chip.onclick = () => {
       const prompt = chip.dataset.prompt;
-      const curr = $('copilotCurrentRole')?.value || 'Junior Statistical Officer';
-      const targ = $('copilotTargetRole')?.value || 'Senior Statistical Officer';
-      triggerCopilotPathway(curr, targ, prompt);
+      const currEl = $('copilotCurrentRole');
+      const targEl = $('copilotTargetRole');
+      if (prompt === 'JSO to SSO Transition') {
+        if (currEl) currEl.value = 'Junior Statistical Officer';
+        updateTargetOptions('Junior Statistical Officer', CADRE_ORDER);
+        if (targEl) targEl.value = 'Senior Statistical Officer';
+        triggerCopilotPathway('Junior Statistical Officer', 'Senior Statistical Officer');
+      } else if (prompt === 'ISS Cadre Fast-Track') {
+        const curr = currEl?.value || 'Senior Statistical Officer';
+        updateTargetOptions(curr, CADRE_ORDER);
+        if (targEl) targEl.value = 'ISS Officer';
+        triggerCopilotPathway(curr, 'ISS Officer', 'Direct Indian Statistical Service (ISS) Cadre Progression Prerequisite & Roadmap');
+      } else {
+        const curr = currEl?.value || 'Junior Statistical Officer';
+        const targ = targEl?.value || 'Senior Statistical Officer';
+        triggerCopilotPathway(curr, targ, prompt);
+      }
     };
   });
 }

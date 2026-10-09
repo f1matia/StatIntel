@@ -595,53 +595,95 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   gap: 16px;
   align-items: start;
 }
+.network-guide-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.guide-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.guide-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.guide-step b { display: block; font-size: 11px; }
+.guide-step small { display: block; font-size: 9.5px; color: var(--muted); }
+.guide-arrow { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.network-status-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+  background: var(--green-light);
+  border: 1px solid #b5d8c2;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+}
+
 .neural-canvas-wrap {
-  background: #111a15;
-  border: 1px solid #2a3d32;
+  background: #fbfaf6;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-sm);
 }
 .neural-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: #16241d;
-  border-bottom: 1px solid #24382d;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--line);
   font-size: 10px;
 }
 .neural-legend {
   display: flex;
-  gap: 14px;
+  gap: 16px;
   align-items: center;
 }
-.neural-legend span { color: #cbd5cb; font-size: 10px; }
+.neural-legend span { color: var(--ink); font-size: 10px; font-weight: 600; }
 .legend-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  margin-right: 5px;
+  margin-right: 6px;
+  vertical-align: middle;
 }
-.legend-dot.input-dot { background: #2dd4bf; box-shadow: 0 0 6px rgba(45, 212, 191, 0.6); }
-.legend-dot.hidden-dot { background: #fbbf24; box-shadow: 0 0 6px rgba(251, 191, 36, 0.6); }
-.legend-dot.output-dot { background: #818cf8; box-shadow: 0 0 6px rgba(129, 140, 248, 0.6); }
-.neural-hint { color: #8fa093; font-size: 9.5px; font-style: italic; }
+.legend-dot.input-dot { background: #2d6648; border: 1px solid #1e4530; }
+.legend-dot.hidden-dot { background: #a47730; border: 1px solid #7c581e; }
+.legend-dot.output-dot { background: #4a7d9e; border: 1px solid #335973; }
+.neural-hint { color: var(--muted); font-size: 9.5px; font-weight: 500; }
 
 /* SVG Neural Elements */
 .graph-panel svg {
   width: 100%;
   min-width: 680px;
   display: block;
-  background: radial-gradient(circle at 50% 50%, #16241e 0%, #0d1511 100%);
+  background: #fbfaf6;
 }
 
 .synapse {
-  transition: stroke 0.3s ease, stroke-width 0.3s ease, stroke-opacity 0.3s ease, opacity 0.3s ease;
+  transition: stroke 0.25s ease, stroke-width 0.25s ease, stroke-opacity 0.25s ease, opacity 0.25s ease;
 }
 .synapse.synapse-firing {
-  stroke-width: 2.6px !important;
+  stroke-width: 2.8px !important;
+  stroke: var(--accent) !important;
   stroke-opacity: 0.95 !important;
   stroke-dasharray: 6 4;
   animation: synapse-flow 0.8s linear infinite;
@@ -653,25 +695,32 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 
 .neuron-node {
   cursor: pointer;
-  transition: transform 0.25s ease, opacity 0.3s ease;
-}
-.neuron-node:hover .neuron-core {
-  filter: drop-shadow(0 0 8px currentColor);
-}
-.neuron-node.neuron-firing .neuron-core {
-  filter: drop-shadow(0 0 12px currentColor);
+  transition: transform 0.2s ease, opacity 0.25s ease;
 }
 .neuron-halo {
-  transition: r 0.3s ease, stroke-opacity 0.3s ease, fill-opacity 0.3s ease;
+  transition: r 0.25s ease, stroke-opacity 0.25s ease, stroke-width 0.25s ease;
+}
+.neuron-node:hover .neuron-halo {
+  r: 25px !important;
+  stroke-width: 2px !important;
 }
 .neuron-node.neuron-firing .neuron-halo {
-  r: 28px !important;
+  r: 26px !important;
+  stroke-width: 2.5px !important;
+  stroke: var(--accent) !important;
+  stroke-opacity: 0.9 !important;
+}
+.neuron-node.neuron-firing .neuron-core {
+  stroke: var(--accent) !important;
+  stroke-width: 2.5px !important;
+}
+.neuron-node.neuron-activated .neuron-core {
+  stroke: var(--accent) !important;
   stroke-width: 2px !important;
-  stroke-opacity: 0.8 !important;
 }
 
 .dimmed {
-  opacity: 0.12 !important;
+  opacity: 0.16 !important;
 }
 
 /* Copilot Panel */

@@ -176,6 +176,23 @@ def generate_career_pathway(
     skills = db.scalars(select(Skill)).all()
     courses = db.scalars(select(Course)).all()
 
+    # Guard against identical current and target roles
+    CADRE_HIERARCHY = [
+        "Statistical Investigator",
+        "Junior Statistical Officer",
+        "Senior Statistical Officer",
+        "Assistant Director",
+        "Deputy Director",
+        "Director",
+        "ISS Officer"
+    ]
+    if target_role and target_role.strip().lower() == role_name.strip().lower():
+        curr_idx = next((i for i, r in enumerate(CADRE_HIERARCHY) if r.lower() == role_name.lower()), -1)
+        if curr_idx >= 0 and curr_idx < len(CADRE_HIERARCHY) - 1:
+            target_role = CADRE_HIERARCHY[curr_idx + 1]
+        else:
+            target_role = "Senior Cadre Specialization"
+
     # Find matching role and target
     curr_role_obj = next((r for r in roles if r.name.lower() == role_name.lower()), None)
     target_role_obj = next((r for r in roles if target_role and r.name.lower() == target_role.lower()), None)
