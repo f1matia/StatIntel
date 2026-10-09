@@ -260,16 +260,16 @@ def _generate_deterministic_pathway(
     """Generate high-accuracy cadre transition pathway when offline or without API key."""
     skill_list_str = ", ".join(skills[:4]) if skills else "Data Validation, Applied Sampling, Python"
 
-    return f"""### 🎯 Cadre Transition Pathway: **{role_name} &rarr; {target_role}**
+    return f"""### Cadre Progression Dossier: {role_name} &rarr; {target_role}
 
-#### 1. Strategic Competency Delta
+#### 1.0 Strategic Competency Delta
 To progress from **{role_name}** to **{target_role}**, the officer must shift from routine field enumeration/data entry toward **independent methodological design, automated reproducible validation, and statistical reporting**.
 - **Critical Bridge Competencies:** {skill_list_str}.
 - **Cadre Expectation:** In {target_role}, the officer is evaluated on designing sampling frames, auditing data quality under the European Statistical System (ESS) framework, and delivering publication-ready index series.
 
 ---
 
-#### 2. 12-Week Structured Upskilling Roadmap
+#### 2.0 Twelve-Week Development Trajectory
 
 * **Weeks 1–4: Core Methodological Foundations**
   * Master stratified multi-stage probability sampling & PPS designs (ISI Kolkata curriculum).
@@ -288,7 +288,7 @@ To progress from **{role_name}** to **{target_role}**, the officer must shift fr
 
 ---
 
-#### 3. Key Official Recommendations
+#### 3.0 Administrative & Methodological Recommendations
 1. Focus on **reproducibility**—all estimations should be auditable via script (avoid unversioned spreadsheets).
 2. Leverage the verified institutional learning sources listed below (UNSD, ISI Kolkata, Eurostat).
 3. Partner with senior cadre mentors to conduct peer reviews of survey estimation methodology."""

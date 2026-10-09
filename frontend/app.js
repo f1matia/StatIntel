@@ -970,10 +970,10 @@ async function triggerCopilotPathway(currentRole, targetRole, query = '') {
   if (!roadmapEl) return;
 
   roadmapEl.innerHTML = `
-    <div style="padding:14px;text-align:center;color:var(--muted)">
-      <div style="font-size:18px;margin-bottom:6px">⚡</div>
-      <b>Consulting StatIntel AI Cadre Engine…</b>
-      <p style="font-size:10px;margin-top:4px">Synthesizing civil service standards, syllabus delta, and verified sources.</p>
+    <div class="cadre-analyzing-box">
+      <div class="cadre-pulse-bar"></div>
+      <b>Evaluating Cadre Competency Standards…</b>
+      <p>Consulting civil service progression frameworks, competency deltas, and verified institutional curricula.</p>
     </div>
   `;
   if (sourcesEl) sourcesEl.innerHTML = '';
@@ -991,10 +991,10 @@ async function triggerCopilotPathway(currentRole, targetRole, query = '') {
     if (res.status === 'success') {
       renderCopilotOutput(res);
     } else {
-      roadmapEl.innerHTML = `<p class="error">Copilot: ${esc(res.detail || 'Unable to generate pathway')}</p>`;
+      roadmapEl.innerHTML = `<p class="error">Advisory Engine: ${esc(res.detail || 'Unable to generate pathway')}</p>`;
     }
   } catch (err) {
-    roadmapEl.innerHTML = `<p class="error">Copilot error: ${esc(err.message)}</p>`;
+    roadmapEl.innerHTML = `<p class="error">Advisory Engine: ${esc(err.message)}</p>`;
   }
 }
 
@@ -1016,8 +1016,8 @@ function renderCopilotOutput(data) {
   html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
 
   roadmapEl.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)">
-      <span class="badge ${data.mode === 'live_gemini' ? 'badge-green' : 'badge-blue'}">${data.mode === 'live_gemini' ? 'Google Gemini AI' : 'Cadre AI Intelligence'}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line)">
+      <span class="badge ${data.mode === 'live_gemini' ? 'badge-green' : 'badge-blue'}">${data.mode === 'live_gemini' ? 'Gemini Cognitive Engine' : 'Official Cadre Analytics'}</span>
       <small style="color:var(--muted)">Est. Duration: ${esc(data.estimated_duration)}</small>
     </div>
     ${html}
@@ -1041,7 +1041,7 @@ function renderCopilotOutput(data) {
           </div>
           <p><b>Focus:</b> ${esc(s.focus)} &bull; <small style="color:var(--muted)">${esc(s.duration)}</small></p>
           <a href="${esc(s.url)}" target="_blank" rel="noreferrer" class="source-link-btn">
-            Open Official Resource ↗
+            Open Official Resource &rarr;
           </a>
         </div>
       `;

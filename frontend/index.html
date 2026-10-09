@@ -381,35 +381,38 @@
           </article>
           <aside class="panel graph-detail copilot-panel" id="graphDetail">
             <div class="copilot-header">
-              <h2><span>🤖</span> StatIntel AI Cadre Copilot</h2>
-              <span class="copilot-badge">● Active &bull; Neural Grounded</span>
+              <div>
+                <p class="eyebrow" style="color:#bbf7d0;margin-bottom:2px">DECISION SUPPORT</p>
+                <h2>Cadre Development Advisor</h2>
+              </div>
+              <span class="copilot-badge">CIVIL SERVICE INTELLIGENCE</span>
             </div>
             <div class="copilot-body" id="copilotBody">
               <div class="copilot-controls">
-                <label>Current Cadre Post (Input)</label>
+                <label>Current Cadre Post (Input Layer)</label>
                 <select id="copilotCurrentRole"></select>
-                <label>Target Cadre / Goal (Output)</label>
+                <label>Target Cadre / Specialization (Output Layer)</label>
                 <select id="copilotTargetRole"></select>
-                <button class="primary wide" id="copilotGenerateBtn">⚡ Generate Neural Career Pathway</button>
+                <button class="primary wide" id="copilotGenerateBtn">Generate Progression Pathway &rarr;</button>
               </div>
               <div id="copilotResponseArea">
                 <div class="copilot-roadmap" id="copilotRoadmap">
-                  <h3>Select a Cadre or Neuron to Begin</h3>
-                  <p class="muted">Click on any role neuron on the left, or pick your starting and target cadre above, to fire the neural pathway and generate verified learning resources.</p>
+                  <h3>Cadre Progression & Curriculum Analysis</h3>
+                  <p class="muted">Select a starting cadre and target role above, or click any neuron node in the network to evaluate the competency delta and access verified institutional learning curricula.</p>
                 </div>
                 <div id="copilotSourcesArea"></div>
               </div>
             </div>
             <div class="copilot-chat-footer">
               <div class="quick-chips">
-                <span class="chip" data-prompt="JSO to SSO Transition">⚡ JSO ➔ SSO Transition</span>
-                <span class="chip" data-prompt="Python & Sampling Roadmap">⚡ Python & Sampling Roadmap</span>
-                <span class="chip" data-prompt="ISS Cadre Fast-Track">⚡ ISS Group A Fast-Track</span>
-                <span class="chip" data-prompt="Verified Learning Sources">⚡ Verified Sources</span>
+                <span class="chip" data-prompt="JSO to SSO Transition">JSO to SSO Transition</span>
+                <span class="chip" data-prompt="Python & Sampling Roadmap">Python & Sampling Curriculum</span>
+                <span class="chip" data-prompt="ISS Cadre Fast-Track">ISS Cadre Progression</span>
+                <span class="chip" data-prompt="Verified Learning Sources">Verified Institutional Sources</span>
               </div>
               <form id="copilotChatForm" class="copilot-input-row">
-                <input id="copilotChatInput" placeholder="Ask AI Copilot about career pathways, sources..." autocomplete="off">
-                <button class="primary" type="submit">Ask</button>
+                <input id="copilotChatInput" placeholder="Inquire on competency delta, standards, or learning curricula…" autocomplete="off">
+                <button class="secondary" type="submit">Inquire &rarr;</button>
               </form>
             </div>
           </aside>
@@ -427,26 +430,26 @@
         </div>
         <div class="report-grid">
           <article class="panel report-card">
-            <div class="report-icon">📊</div>
+            <div class="report-icon-tag">OFFICER CADRE</div>
             <h2>Officer data</h2>
             <p>Export current officer profiles and supplied assessment values.</p>
             <button class="primary" id="reportOfficerCsv">Download officers.csv</button>
           </article>
           <article class="panel report-card">
-            <div class="report-icon">🔍</div>
+            <div class="report-icon-tag">GAP ANALYSIS</div>
             <h2>Gap analysis</h2>
             <p>Export weighted severity scores and the methodology note.</p>
             <button class="primary" id="reportGapCsv">Download gaps.csv</button>
           </article>
           <article class="panel report-card">
-            <div class="report-icon">🏥</div>
+            <div class="report-icon-tag">DIAGNOSTICS</div>
             <h2>System health</h2>
             <p>Check API availability and the database connection.</p>
             <button class="secondary" id="healthCheckBtn">Run health check</button>
             <pre id="healthResult"></pre>
           </article>
           <article class="panel report-card" style="border-top: 3px solid var(--accent)">
-            <div class="report-icon">📑</div>
+            <div class="report-icon-tag">TECHNICAL DOSSIER</div>
             <h2>Pitch Dossier (PDF)</h2>
             <p>Download the official publication-grade technical defense, mathematical specs, and pitch dossier in PDF format.</p>
             <button class="primary" id="reportPitchPdf">Download Dossier.pdf</button>

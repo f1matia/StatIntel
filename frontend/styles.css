@@ -685,30 +685,28 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 }
 .copilot-header {
   padding: 14px 18px;
-  background: #202d26;
-  color: #fff;
-  border-bottom: 1px solid #33443a;
+  background: #1a2420;
+  color: #f0ede4;
+  border-bottom: 1px solid #2d3d33;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .copilot-header h2 {
   font: 400 15px Georgia, serif;
-  color: #fff;
+  color: #f0ede4;
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  letter-spacing: -0.2px;
 }
 .copilot-badge {
   font-size: 8px;
-  letter-spacing: 1px;
-  font-weight: 700;
+  letter-spacing: 1.2px;
+  font-weight: 800;
   padding: 3px 8px;
-  background: rgba(45, 212, 191, 0.2);
-  color: #2dd4bf;
-  border: 1px solid rgba(45, 212, 191, 0.4);
-  border-radius: 20px;
+  background: #24352a;
+  color: #bbf7d0;
+  border: 1px solid #3d5546;
+  border-radius: 2px;
   text-transform: uppercase;
 }
 .copilot-body {
@@ -763,6 +761,50 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 }
 .copilot-roadmap li { margin-bottom: 4px; }
 
+/* Cadre Analyzing Loader */
+.cadre-analyzing-box {
+  padding: 22px 16px;
+  text-align: center;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.cadre-analyzing-box b {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.cadre-analyzing-box p {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+.cadre-pulse-bar {
+  height: 3px;
+  width: 100px;
+  margin: 0 auto 12px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.cadre-pulse-bar::after {
+  content: '';
+  position: absolute;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: var(--accent);
+  animation: pulse-slide 1.2s ease-in-out infinite;
+}
+@keyframes pulse-slide {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
 /* Source Cards */
 .sources-grid {
   display: grid;
@@ -771,13 +813,14 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 }
 .source-card {
   padding: 12px 14px;
-  background: var(--blue-light);
-  border: 1px solid #b2d2e3;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
   border-radius: var(--radius);
-  transition: transform var(--transition);
+  transition: border-color var(--transition);
 }
 .source-card:hover {
-  transform: translateY(-2px);
+  border-color: var(--blue);
   box-shadow: var(--shadow-sm);
 }
 .source-card-top {
@@ -790,23 +833,23 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .source-card h4 {
   font-size: 11px;
   font-weight: 700;
-  color: #1e3a4b;
+  color: var(--ink);
   margin: 0;
 }
 .source-provider {
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   padding: 2px 6px;
-  background: #d4e8f5;
-  color: #1e4e6b;
+  background: var(--blue-light);
+  color: var(--blue);
   border-radius: 2px;
   white-space: nowrap;
 }
 .source-card p {
   font-size: 10px;
-  color: #3b5261;
+  color: var(--muted);
   margin: 0 0 8px 0;
   line-height: 1.5;
 }
@@ -841,8 +884,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   background: #fff;
   border: 1px solid var(--line);
   color: var(--ink);
-  padding: 4px 9px;
-  border-radius: 12px;
+  padding: 4px 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: var(--transition);
 }
@@ -857,6 +900,20 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .copilot-input-row input {
   flex: 1;
   font-size: 11px;
+}
+
+.report-icon-tag {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--red-light);
+  border: 1px solid #d4a99e;
+  padding: 3px 6px;
+  border-radius: 2px;
+  margin-bottom: 10px;
 }
 
 /* ── Reports ─────────────────────────────────────────────────────── */
