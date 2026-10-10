@@ -979,12 +979,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 /* ── Plan My Pathway ─────────────────────────────────────────────── */
 .pathway-split-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.22fr) minmax(390px, 0.98fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
   gap: 16px;
   align-items: start;
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1180px) {
   .pathway-split-layout {
     grid-template-columns: 1fr;
   }
@@ -993,6 +993,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .pathway-left-col, .pathway-right-col {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 /* YouTube Rectangle Box */
@@ -1133,10 +1134,24 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   background: var(--panel2);
   border-bottom: 1px solid var(--line);
 }
+.chat-panel-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.chat-panel-head-titles {
+  flex: 1;
+  min-width: 0;
+}
 .chat-panel-head h2 {
   font: 700 13px Georgia, serif;
   color: var(--ink);
   margin: 2px 0 2px 0;
+}
+.chat-panel-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .pathway-chat-stream {
   padding: 14px 16px;

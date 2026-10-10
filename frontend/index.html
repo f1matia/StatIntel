@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>StatIntel — Workforce Intelligence Platform</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.2">
+  <link rel="stylesheet" href="/static/styles.css?v=2.3">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -399,7 +399,7 @@
               </div>
               <span class="neural-hint">Tip: Click or hover any neuron to fire forward synaptic activation</span>
             </div>
-            <svg id="graphSvg" viewBox="0 0 1020 660" role="img" aria-label="Neural capability network"></svg>
+            <svg id="graphSvg" viewBox="0 0 1100 660" role="img" aria-label="Neural capability network"></svg>
           </article>
           <aside class="panel graph-detail copilot-panel" id="graphDetail">
             <div class="copilot-header">
@@ -613,13 +613,13 @@
             <!-- Pathway Discussion Chat Option -->
             <article class="panel pathway-chat-panel gap-top">
               <div class="chat-panel-head">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <div>
+                <div class="chat-panel-head-row">
+                  <div class="chat-panel-head-titles">
                     <p class="eyebrow" style="color:var(--accent);margin-bottom:2px">GROUNDED ANALYST &bull; ZERO UNGROUNDED CLAIMS</p>
                     <h2>Discuss Your Pathway</h2>
                     <p class="muted" style="font-size:10px;margin:0">Inquire on sequencing rationale, adjust weekly schedule, or discuss prerequisites.</p>
                   </div>
-                  <span class="badge badge-green" id="pathwayAdvisorStatusBadge">Verified Engine</span>
+                  <span class="badge badge-green chat-panel-badge" id="pathwayAdvisorStatusBadge">Verified Engine</span>
                 </div>
               </div>
               <div id="pathwayChatStream" class="pathway-chat-stream">
@@ -687,6 +687,6 @@
 <!-- ═══════════ TOAST ═══════════ -->
 <div id="toast" class="toast"></div>
 
-<script src="/static/app.js?v=2.2"></script>
+<script src="/static/app.js?v=2.3"></script>
 </body>
 </html>

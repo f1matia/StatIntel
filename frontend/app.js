@@ -826,8 +826,8 @@ async function renderGraph() {
 
     // Neural Coordinates (3-Layer Deep Architecture)
     const pos = {};
-    const W = 1020, H = 660;
-    const xRole = 175, xSkill = 510, xCourse = 825;
+    const W = 1100, H = 660;
+    const xRole = 165, xSkill = 490, xCourse = 780;
 
     r.forEach((n, i) => pos[n.id] = { x: xRole, y: 70 + i * ((H - 140) / Math.max(r.length - 1, 1)), layer: 1, idx: `x${i+1}` });
     s.forEach((n, i) => pos[n.id] = { x: xSkill, y: 55 + i * ((H - 110) / Math.max(s.length - 1, 1)), layer: 2, idx: `h${i+1}` });
@@ -851,7 +851,7 @@ async function renderGraph() {
       <g class="neural-headers" opacity="0.95">
         <text x="${xRole}" y="32" text-anchor="middle" fill="#2d6648" font-size="10.5" font-weight="800" letter-spacing="1.5">INPUT LAYER &bull; CADRE POSTS</text>
         <text x="${xSkill}" y="32" text-anchor="middle" fill="#a47730" font-size="10.5" font-weight="800" letter-spacing="1.5">HIDDEN LAYER &bull; COMPETENCY NEURONS</text>
-        <text x="${xCourse}" y="32" text-anchor="middle" fill="#4a7d9e" font-size="10.5" font-weight="800" letter-spacing="1.5">OUTPUT LAYER &bull; VERIFIED CURRICULA</text>
+        <text x="${xCourse + 70}" y="32" text-anchor="middle" fill="#4a7d9e" font-size="10.5" font-weight="800" letter-spacing="1.5">OUTPUT LAYER &bull; VERIFIED CURRICULA</text>
       </g>
     `;
 
@@ -872,7 +872,7 @@ async function renderGraph() {
       const p = pos[n.id];
       if (!p) return;
       const color = p.layer === 1 ? '#2d6648' : p.layer === 2 ? '#a47730' : '#4a7d9e';
-      const label = n.label.length > 22 ? n.label.slice(0, 20) + '…' : n.label;
+      const label = n.label.length > 20 ? n.label.slice(0, 19) + '…' : n.label;
 
       svgHtml += `
         <g class="neuron-node" id="neuron-${n.id}" data-id="${n.id}" data-type="${n.type}" data-label="${esc(n.label)}" data-layer="${p.layer}">
@@ -884,11 +884,11 @@ async function renderGraph() {
           <text x="${p.x}" y="${p.y + 3.5}" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="800">${p.idx}</text>
           <!-- Label Card -->
           <g class="neuron-label-group">
-            <rect x="${p.layer === 1 ? p.x - 155 : p.layer === 3 ? p.x + 22 : p.x - 70}" y="${p.layer === 2 ? p.y + 16 : p.y - 12}"
-              width="${p.layer === 2 ? 140 : 130}" height="24" rx="3"
+            <rect x="${p.layer === 1 ? p.x - 150 : p.layer === 3 ? p.x + 20 : p.x - 70}" y="${p.layer === 2 ? p.y + 16 : p.y - 12}"
+              width="${p.layer === 2 ? 140 : p.layer === 3 ? 150 : 125}" height="24" rx="3"
               fill="#ffffff" fill-opacity="0.95" stroke="${color}" stroke-opacity="0.5" stroke-width="1" />
-            <text x="${p.layer === 1 ? p.x - 90 : p.layer === 3 ? p.x + 87 : p.x}" y="${p.layer === 2 ? p.y + 31 : p.y + 3.5}"
-              text-anchor="middle" fill="#1a2420" font-size="9.5" font-weight="700">${esc(label)}</text>
+            <text x="${p.layer === 1 ? p.x - 87 : p.layer === 3 ? p.x + 95 : p.x}" y="${p.layer === 2 ? p.y + 31 : p.y + 3.5}"
+              text-anchor="middle" fill="#1a2420" font-size="9" font-weight="700">${esc(label)}</text>
           </g>
         </g>
       `;

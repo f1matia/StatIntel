@@ -9,8 +9,11 @@ import os
 import re
 import math
 import io
+import json
+import logging
 from typing import Optional, Dict, Any, List
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .models import Officer, Skill, Role, Course
@@ -566,6 +569,45 @@ def generate_structured_roadmap(
     }
 
 
+def _call_anthropic_api(system_prompt: str, user_prompt: str) -> Optional[str]:
+    """
+    Call Anthropic Messages API using configured environment credentials.
+    Reads ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, ANTHROPIC_MODEL.
+    """
+    api_key = os.getenv("ANTHROPIC_API_KEY", "admin")
+    base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.openapis.online/anthropic").rstrip("/")
+    model = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-7")
+
+    url = f"{base_url}/v1/messages"
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "max_tokens": 1024,
+        "system": system_prompt,
+        "messages": [
+            {"role": "user", "content": user_prompt}
+        ]
+    }
+
+    try:
+        resp = httpx.post(url, headers=headers, json=payload, timeout=20.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            content_blocks = data.get("content", [])
+            text_parts = [b.get("text", "") for b in content_blocks if b.get("type") == "text"]
+            return "".join(text_parts).strip()
+        else:
+            logging.warning(f"Anthropic API returned status {resp.status_code}: {resp.text[:200]}")
+            return None
+    except Exception as exc:
+        logging.warning(f"Anthropic API request failed: {exc}")
+        return None
+
+
 def execute_grounded_conversation(
     current_roadmap: Dict[str, Any],
     user_message: str,
@@ -573,8 +615,9 @@ def execute_grounded_conversation(
 ) -> Dict[str, Any]:
     """
     LLM as an Interpreter:
-    Takes natural language discussion/instruction, modifies roadmap state deterministically,
-    and mechanically validates all video IDs against candidate catalog.
+    Uses Claude (via Anthropic API) as a grounded conversational advisor over the officer's roadmap.
+    Deterministically applies any parameter changes (pace, reordering), then generates an accurate,
+    context-aware explanation grounded strictly in the roadmap state and civil service standards.
     """
     msg = user_message.lower().strip()
     updated_roadmap = dict(current_roadmap)
@@ -582,9 +625,10 @@ def execute_grounded_conversation(
     pool = set(updated_roadmap.get("candidate_id_pool", []))
     
     action_type = "explain_and_clarify"
-    action_detail = "Interpreted officer inquiry against verified cadre roadmap."
+    action_detail = "Consulted Grounded Cadre Advisor over current roadmap state."
     explanation = ""
 
+    # Deterministic State Adjustments (Pace & Reordering)
     # 1. Pace Adjustment (e.g. "make it 6 hours", "increase to 8 hours", "make it lighter")
     hours_match = re.search(r"(\d+)\s*(?:hours|hrs|hr)", msg)
     if hours_match:
@@ -594,8 +638,6 @@ def execute_grounded_conversation(
         updated_roadmap["estimated_weeks"] = max(2, math.ceil(total_study_minutes / (new_hours * 60)))
         action_type = "adjust_pace"
         action_detail = f"Adjusted study commitment to {new_hours} hours/week. Completion horizon recomputed to {updated_roadmap['estimated_weeks']} weeks."
-        explanation = f"Your weekly commitment has been recalibrated to **{new_hours} hours/week**. Based on {round(total_study_minutes/60, 1)} total study hours (including a 1.4x practical coding multiplier), your estimated completion time is now **{updated_roadmap['estimated_weeks']} weeks**."
-
     elif "lighter" in msg or "too heavy" in msg or "reduce pace" in msg:
         curr_h = updated_roadmap.get("weekly_hours", 4)
         new_h = max(2, curr_h - 1)
@@ -604,25 +646,20 @@ def execute_grounded_conversation(
         updated_roadmap["estimated_weeks"] = max(2, math.ceil(total_study_minutes / (new_h * 60)))
         action_type = "adjust_pace"
         action_detail = f"Reduced intensity to {new_h} hours/week."
-        explanation = f"Schedule intensity adjusted to **{new_h} hours/week**. The learning pacing is spaced across **{updated_roadmap['estimated_weeks']} weeks** to accommodate active administrative responsibilities."
 
-    # 2. Phase Reordering (e.g. "focus on sampling first", "prioritize python")
-    elif "sampling" in msg and "first" in msg or "prioritize sampling" in msg:
-        # Move sampling phase to index 0
+    # 2. Phase Reordering
+    elif ("sampling" in msg and "first" in msg) or "prioritize sampling" in msg:
         sampling_idx = next((i for i, p in enumerate(phases) if "sampling" in p["skill"].lower()), -1)
         if sampling_idx > 0:
             item = phases.pop(sampling_idx)
             phases.insert(0, item)
-            # re-index orders
             for i, p in enumerate(phases, 1):
                 p["order"] = i
                 p["title"] = f"Phase {i}: {p['skill']}"
             updated_roadmap["phases"] = phases
             action_type = "reorder_phases"
             action_detail = "Re-sequenced Applied Sampling Methodology to Phase 1."
-            explanation = "Applied Sampling Methodology has been promoted to **Phase 1**. Probability sampling formulations (ISI Kolkata & UNSD modules) will precede secondary data pipelines."
-
-    elif "python" in msg and ("first" in msg or "prioritize" in msg):
+    elif ("python" in msg and "first" in msg) or ("prioritize python" in msg):
         py_idx = next((i for i, p in enumerate(phases) if "python" in p["skill"].lower()), -1)
         if py_idx > 0:
             item = phases.pop(py_idx)
@@ -633,31 +670,106 @@ def execute_grounded_conversation(
             updated_roadmap["phases"] = phases
             action_type = "reorder_phases"
             action_detail = "Re-sequenced Python & Reproducible Analysis to Phase 1."
-            explanation = "Python & Reproducible Analysis is confirmed as **Phase 1**, ensuring clean data manipulation foundations prior to econometric and sampling modeling."
-
     elif "why" in msg or "rationale" in msg or "priority" in msg:
         action_type = "explain_priority"
         if phases:
             p1 = phases[0]
             action_detail = f"Explained mathematical rationale for Phase 1 ({p1['skill']})."
+
+    # Build Context for the LLM
+    officer_name = updated_roadmap.get("officer_name", "Officer")
+    curr_role = updated_roadmap.get("current_role", "Junior Statistical Officer")
+    target_role = updated_roadmap.get("target_role", "Senior Statistical Officer")
+    weekly_hours = updated_roadmap.get("weekly_hours", 4)
+    est_weeks = updated_roadmap.get("estimated_weeks", 4)
+    base_readiness = updated_roadmap.get("current_readiness", 50.0)
+    proj_readiness = updated_roadmap.get("projected_readiness", 75.0)
+
+    phases_summary = []
+    for p in phases:
+        items_summary = [f"- '{it.get('title')}' by {it.get('channel')} ({it.get('duration_min')} min, {it.get('verified_standard', 'Standard')})" for it in p.get("items", [])]
+        phases_summary.append(
+            f"Phase {p.get('order')}: {p.get('skill')} (Severity score: {p.get('gap_severity')}, Level: {p.get('severity_level')})\n"
+            f"  Milestone: {p.get('milestone')}\n"
+            f"  Curated Modules:\n" + "\n".join(items_summary)
+        )
+
+    all_providers = set()
+    for p in phases:
+        for it in p.get("items", []):
+            all_providers.add(it.get("channel", "Unknown"))
+
+    system_prompt = (
+        "You are the StatIntel Cadre Progression Advisor — an authoritative, expert statistical civil service consultant.\n"
+        "You serve statistical officers in government statistical agencies (e.g., MoSPI, CSO, NSSO, ISI).\n\n"
+        "Grounding Rules:\n"
+        "1. Never invent or hallucinate metrics, roles, or resources not present in the officer's roadmap.\n"
+        "2. All advice must be grounded in official statistical methodology, civil service cadre rules, and reproducible data standards.\n"
+        "3. You speak authoritatively, concisely, and professionally without emojis.\n"
+        "4. Directly and specifically answer the user's question. If they ask about providers (like NPTEL, freeCodeCamp, Corey Schafer, StatQuest), explain why those specific accredited institutions and educators were chosen for their academic rigor, government syllabus alignment, or open-source reproducibility.\n"
+        "5. Keep responses between 2 and 4 concise, impactful paragraphs or bullet points."
+    )
+
+    user_prompt = (
+        f"Officer Context:\n"
+        f"- Name: {officer_name}\n"
+        f"- Current Role: {curr_role}\n"
+        f"- Target Promotion Cadre: {target_role}\n"
+        f"- Baseline Readiness: {base_readiness}%\n"
+        f"- Projected Readiness: {proj_readiness}%\n"
+        f"- Weekly Commitment: {weekly_hours} hours/week\n"
+        f"- Completion Horizon: {est_weeks} weeks\n"
+        f"- Action Taken: {action_type} ({action_detail})\n\n"
+        f"Active Roadmap Phases & Video Curricula:\n" + "\n\n".join(phases_summary) + "\n\n"
+        f"Included Providers in Catalog: {', '.join(sorted(all_providers))}\n\n"
+        f"Officer Inquiry: \"{user_message}\"\n\n"
+        f"Please provide a grounded, accurate, professional response directly addressing the officer's inquiry."
+    )
+
+    # Call Anthropic API
+    llm_response = _call_anthropic_api(system_prompt, user_prompt)
+
+    if llm_response:
+        explanation = llm_response
+    else:
+        # High-quality contextual fallback if API proxy is in maintenance
+        if "nptel" in msg or "provider" in msg or "channel" in msg or "source" in msg or "youtube" in msg:
+            action_type = "explain_providers"
+            action_detail = "Explained accredited provider selection methodology."
             explanation = (
-                f"**Mathematical Rationale:** {p1['skill']} is prioritized as Phase 1 due to its "
-                f"composite severity score of **{p1['gap_severity']}** (ranked Critical/High across cadre profiles). "
+                f"**Provider Selection Rationale:** The curriculum is not restricted to NPTEL alone. "
+                f"It draws from a balanced multi-tier repository of verified sources: **NPTEL / IIT Madras** and **IIT Kharagpur** "
+                f"for government-accredited mathematical rigor and official syllabus alignment; **Corey Schafer** and **freeCodeCamp** "
+                f"for applied, production-grade microdata pipelines and pandas workflows; **StatQuest** for visual intuition; "
+                f"and international bodies (**UNSD**, **Eurostat**) for official statistical standards and Fellegi-Holt imputation."
+            )
+        elif action_type == "adjust_pace":
+            explanation = (
+                f"Your weekly commitment has been recalibrated to **{updated_roadmap['weekly_hours']} hours/week**. "
+                f"Based on total structured study and practical implementation hours, your estimated completion horizon "
+                f"is now **{updated_roadmap['estimated_weeks']} weeks**."
+            )
+        elif action_type == "reorder_phases":
+            p1 = phases[0] if phases else {}
+            explanation = (
+                f"Roadmap re-sequenced: **{p1.get('skill', 'Priority Phase')}** is now designated as Phase 1. "
+                f"All subsequent dependency chains and weekly progression have been updated accordingly."
+            )
+        elif action_type == "explain_priority":
+            p1 = phases[0] if phases else {}
+            explanation = (
+                f"**Mathematical Rationale:** {p1.get('skill', 'Phase 1')} is prioritized as Phase 1 due to its "
+                f"composite severity score of **{p1.get('gap_severity', 50.0)}** (ranked Critical/High across cadre profiles). "
                 f"Under official civil service competency rubrics, foundational automation and error-free microdata handling "
                 f"must precede multi-stage estimation and administrative reporting."
             )
         else:
-            explanation = "Roadmap sequencing is determined by mathematical gap severity and competency prerequisite hierarchy."
-
-    else:
-        # General guidance
-        action_type = "explain_and_clarify"
-        action_detail = "Provided grounded competency advisory note."
-        explanation = (
-            f"Your current roadmap targets **{updated_roadmap.get('target_role', 'Senior Statistical Officer')}** "
-            f"across **{len(phases)} structured phases**. Every video is verified against allowlisted academic providers "
-            f"(NPTEL, ISI Kolkata, UNSD, Eurostat). Check off modules as you complete them to track your verified progress."
-        )
+            explanation = (
+                f"Your roadmap targets progression from **{curr_role}** to **{target_role}** "
+                f"across **{len(phases)} structured phases**, uplifting readiness from **{base_readiness}%** to **{proj_readiness}%**. "
+                f"Every video module is verified against institutional allowlists. Inquire on any phase, "
+                f"provider accreditation, or adjust weekly pacing as needed."
+            )
 
     # Mechanical Verifier: Ensure every video in the roadmap exists in the catalog
     verified_phases = []
