@@ -1230,6 +1230,88 @@ async function initPathwayPage() {
       if ($('resetPathwayBtn')) $('resetPathwayBtn').onclick = () => resetPathwayPlan();
       if ($('downloadPathwayPdfBtn')) $('downloadPathwayPdfBtn').onclick = () => downloadPathwayPdf();
 
+      // Administrator Grant Access Handlers
+      const grantPanel = $('pathwayAdminGrantPanel');
+      const toggleGrantBtn = $('toggleGrantAccessBtn');
+      const closeGrantBtn = $('closeGrantAccessBtn');
+      const grantOfficerSel = $('grantUserOfficerSelect');
+
+      if (toggleGrantBtn && grantPanel) {
+        // Show button only if admin (or allow all in demo)
+        toggleGrantBtn.onclick = () => {
+          grantPanel.classList.toggle('hidden');
+          if (!grantPanel.classList.contains('hidden') && grantOfficerSel) {
+            grantOfficerSel.innerHTML = '<option value="">-- No linked officer profile (General study access) --</option>' +
+              officers.map(o => `<option value="${o.id}">${esc(o.name)} (${esc(o.department)})</option>`).join('');
+          }
+        };
+      }
+      if (closeGrantBtn && grantPanel) {
+        closeGrantBtn.onclick = () => grantPanel.classList.add('hidden');
+      }
+
+      const grantForm = $('pathwayGrantAccessForm');
+      if (grantForm) {
+        grantForm.onsubmit = async e => {
+          e.preventDefault();
+          const emailInput = $('grantUserEmail');
+          const email = emailInput?.value.trim();
+          const offId = $('grantUserOfficerSelect')?.value ? parseInt($('grantUserOfficerSelect').value, 10) : null;
+          const feedback = $('grantAccessFeedback');
+          const resultBox = $('grantAccessResultBox');
+
+          if (!email) return;
+          if (feedback) feedback.textContent = 'Provisioning access…';
+
+          try {
+            const res = await api('/api/pathway/grant-access', {
+              method: 'POST',
+              body: {
+                email: email,
+                officer_id: offId,
+                target_role: $('pathwayTargetRoleSelect')?.value || 'Senior Statistical Officer',
+                weekly_hours: parseInt($('pathwayWeeklyHours')?.value || '4', 10)
+              }
+            });
+
+            if (feedback) feedback.textContent = '';
+            if (resultBox) {
+              resultBox.classList.remove('hidden');
+              let credsHtml = '';
+              if (res.temporary_credentials) {
+                credsHtml = `
+                  <div style="margin-top:6px;padding:8px 10px;background:#ffffff;border:1px solid var(--line);border-radius:2px">
+                    <b>Issued Login Credentials:</b><br>
+                    Username: <code>${esc(res.temporary_credentials.username)}</code> &bull; 
+                    Temporary Password: <code>${esc(res.temporary_credentials.temporary_password)}</code>
+                  </div>
+                `;
+              }
+              resultBox.innerHTML = `
+                <strong style="color:var(--green)">✓ ${esc(res.message)}</strong>
+                <p style="margin:4px 0 0 0;color:var(--ink)">${esc(res.access_scope)}</p>
+                ${credsHtml}
+                <div style="font-size:9.5px;color:var(--muted);margin-top:4px">Audit Log recorded under System Security Register.</div>
+              `;
+            }
+            toast(`Access granted to ${email}`);
+            emailInput.value = '';
+          } catch (err) {
+            if (feedback) feedback.textContent = `Error: ${err.message}`;
+            toast(`Grant failed: ${err.message}`);
+          }
+        };
+      }
+
+      // YouTube Instant Search Filter
+      const ytSearch = $('pathwayYtSearchInput');
+      if (ytSearch) {
+        ytSearch.oninput = () => {
+          const q = ytSearch.value.toLowerCase().trim();
+          filterPathwayYtList(q);
+        };
+      }
+
       const chatForm = $('pathwayChatForm');
       if (chatForm) {
         chatForm.onsubmit = e => {
@@ -1454,32 +1536,54 @@ function renderPathwayDashboard(data) {
         }
       });
     }
-
-    if (!allVideos.length) {
-      ytContainer.innerHTML = '<div class="empty-state" style="padding:20px;text-align:center;color:var(--muted)">No video modules required. All target standards met.</div>';
-    } else {
-      ytContainer.innerHTML = allVideos.map(it => `
-        <div class="yt-video-card">
-          <div class="yt-card-top">
-            <h4 class="yt-card-title">${esc(it.title)}</h4>
-            <span class="yt-duration-badge">${it.duration_min} min</span>
-          </div>
-          <div class="yt-card-meta">
-            <span class="yt-card-channel">${esc(it.channel)}</span>
-            <span class="yt-card-standard">${esc(it.verified_standard || 'Accredited MoSPI/ISI Standard')}</span>
-          </div>
-          <div style="font-size:9.5px;color:var(--muted);line-height:1.4">
-            Phase ${it.phaseOrder}: <b>${esc(it.phaseSkill)}</b> &bull; Quality: <b>${it.score}/100</b>
-          </div>
-          <a href="${esc(it.url)}" target="_blank" rel="noreferrer" class="yt-pill-btn">
-            Watch on YouTube &rarr;
-          </a>
-        </div>
-      `).join('');
-    }
+    currentPathwayVideos = allVideos;
+    renderPathwayVideosList(allVideos);
   }
 
   updatePathwayProgress();
+}
+
+let currentPathwayVideos = [];
+
+function renderPathwayVideosList(videos) {
+  const ytContainer = $('pathwayYtList');
+  if (!ytContainer) return;
+  if (!videos.length) {
+    ytContainer.innerHTML = '<div class="empty-state" style="padding:20px;text-align:center;color:var(--muted)">No video modules matching search.</div>';
+    return;
+  }
+  ytContainer.innerHTML = videos.map(it => `
+    <div class="yt-video-card">
+      <div class="yt-card-top">
+        <h4 class="yt-card-title">${esc(it.title)}</h4>
+        <span class="yt-duration-badge">${it.duration_min} min</span>
+      </div>
+      <div class="yt-card-meta">
+        <span class="yt-card-channel">${esc(it.channel)}</span>
+        <span class="yt-card-standard">${esc(it.verified_standard || 'Accredited MoSPI/ISI Standard')}</span>
+      </div>
+      <div style="font-size:9.5px;color:var(--muted);line-height:1.4">
+        Phase ${it.phaseOrder}: <b>${esc(it.phaseSkill)}</b> &bull; Quality: <b>${it.score}/100</b>
+      </div>
+      <a href="${esc(it.url)}" target="_blank" rel="noreferrer" class="yt-pill-btn">
+        Watch on YouTube &rarr;
+      </a>
+    </div>
+  `).join('');
+}
+
+function filterPathwayYtList(query) {
+  if (!query) {
+    renderPathwayVideosList(currentPathwayVideos);
+    return;
+  }
+  const filtered = currentPathwayVideos.filter(v => 
+    (v.title && v.title.toLowerCase().includes(query)) ||
+    (v.channel && v.channel.toLowerCase().includes(query)) ||
+    (v.phaseSkill && v.phaseSkill.toLowerCase().includes(query)) ||
+    (v.focus && v.focus.toLowerCase().includes(query))
+  );
+  renderPathwayVideosList(filtered);
 }
 
 function updatePathwayProgress() {

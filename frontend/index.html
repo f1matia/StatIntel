@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>StatIntel — Workforce Intelligence Platform</title>
-  <link rel="stylesheet" href="/static/styles.css?v=2.3">
+  <link rel="stylesheet" href="/static/styles.css?v=2.4">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -504,10 +504,44 @@
             <p class="muted">Individualized career progression roadmap, verified YouTube & institutional curriculum curation, and quantitative readiness uplift tracking.</p>
           </div>
           <div class="button-row">
+            <button class="secondary" id="toggleGrantAccessBtn" type="button" style="border-color:var(--accent);color:var(--accent)">+ Grant User Access (Admin)</button>
             <button class="primary" id="downloadPathwayPdfBtn" type="button">Download Pathway Dossier (PDF)</button>
             <button class="secondary" id="resetPathwayBtn" type="button">Reset Plan</button>
           </div>
         </div>
+
+        <!-- ── ADMINISTRATOR ACCESS GRANT ACCORDION ── -->
+        <article class="panel hidden" id="pathwayAdminGrantPanel" style="margin-bottom:16px;border-top:3px solid var(--accent)">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow" style="color:var(--accent);margin-bottom:2px">ADMINISTRATOR PRIVILEGES &bull; SECURE CADRE ACCESS ENROLLMENT</p>
+              <h2>Authorize Officer Access to Learning Pathway</h2>
+              <p class="muted">Enter the user's institutional email address to provision secure access so they can plan, study, and search verified learning modules.</p>
+            </div>
+            <button type="button" id="closeGrantAccessBtn" class="icon-button" style="font-size:16px">×</button>
+          </div>
+          <div style="padding:16px">
+            <form id="pathwayGrantAccessForm" class="two-col gap-sm" style="align-items:flex-end">
+              <div>
+                <label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px">
+                  Officer Institutional Email
+                </label>
+                <input id="grantUserEmail" type="email" placeholder="officer.name@mospi.gov.in" required style="width:100%">
+              </div>
+              <div>
+                <label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px">
+                  Linked Cadre Profile (Optional)
+                </label>
+                <select id="grantUserOfficerSelect" style="width:100%"></select>
+              </div>
+              <div style="grid-column:1 / -1;display:flex;gap:10px;align-items:center;margin-top:6px">
+                <button type="submit" class="primary" id="submitGrantAccessBtn">Authorize & Issue Pathway Credentials &rarr;</button>
+                <span id="grantAccessFeedback" style="font-size:11px;color:var(--muted)"></span>
+              </div>
+            </form>
+            <div id="grantAccessResultBox" class="hidden" style="margin-top:14px;padding:12px 14px;background:#fbfaf6;border:1px solid var(--line);border-left:3px solid var(--green);border-radius:var(--radius);font-size:11px;line-height:1.6"></div>
+          </div>
+        </article>
 
         <div class="pathway-split-layout">
           <!-- ── LEFT COLUMN: Officer Diagnosis & Roadmap Checklist ── -->
@@ -603,6 +637,9 @@
                 <h2>Accredited Video Modules</h2>
                 <p>Mathematically ranked by relevance, duration fit, and institutional rigor.</p>
               </div>
+              <div style="padding:8px 12px;background:var(--panel2);border-bottom:1px solid var(--line)">
+                <input id="pathwayYtSearchInput" placeholder="Search curated videos by topic, channel, or skill…" style="width:100%;font-size:11px;padding:6px 10px;background:#ffffff">
+              </div>
               <div id="pathwayYtList" class="pathway-yt-list">
                 <div class="empty-state" style="padding:24px;text-align:center;color:var(--muted)">
                   Curating verified YouTube links for active gaps...
@@ -687,6 +724,6 @@
 <!-- ═══════════ TOAST ═══════════ -->
 <div id="toast" class="toast"></div>
 
-<script src="/static/app.js?v=2.3"></script>
+<script src="/static/app.js?v=2.4"></script>
 </body>
 </html>

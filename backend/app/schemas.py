@@ -96,3 +96,11 @@ class PathwayConverseInput(BaseModel):
 class PathwayPdfInput(BaseModel):
     roadmap: dict
 
+
+class PathwayAccessGrantInput(BaseModel):
+    email: str = Field(min_length=5, max_length=255)
+    officer_id: Optional[int] = None
+    target_role: Optional[str] = None
+    weekly_hours: int = Field(default=4, ge=1, le=40)
+    notes: Optional[str] = None
+

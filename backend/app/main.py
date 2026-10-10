@@ -12,7 +12,8 @@ from .database import Base, engine, get_db, SessionLocal
 from .models import User, Officer, Skill, Role, RoleSkill, Course, AuditLog
 from .schemas import (
     LoginInput, RegisterInput, UserUpdate, OfficerInput, SkillInput, RoleInput,
-    CourseInput, CopilotInput, PathwayGenerateInput, PathwayConverseInput, PathwayPdfInput
+    CourseInput, CopilotInput, PathwayGenerateInput, PathwayConverseInput, PathwayPdfInput,
+    PathwayAccessGrantInput
 )
 from .security import hash_password, verify_password, create_token, current_user, require_admin
 from .analytics import (
@@ -673,6 +674,87 @@ def pathway_export_pdf(payload: PathwayPdfInput, db: Session = Depends(get_db), 
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=statintel-pathway-checklist-officer-{officer_id}.pdf"}
     )
+
+
+@app.post("/api/pathway/grant-access")
+def pathway_grant_access(payload: PathwayAccessGrantInput, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    email = payload.email.strip().lower()
+    if "@" not in email or "." not in email:
+        raise HTTPException(status_code=400, detail="A valid institutional email address is required.")
+
+    # Check or auto-provision user account
+    user = db.scalar(select(User).where(func.lower(User.email) == email))
+    username_created = None
+    default_pwd = None
+    if not user:
+        # Username from email prefix
+        prefix = email.split("@")[0].replace(".", "_")
+        candidate = prefix
+        counter = 1
+        while db.scalar(select(User.id).where(User.username == candidate)):
+            candidate = f"{prefix}_{counter}"
+            counter += 1
+        default_pwd = f"Cadre@{datetime.now(timezone.utc).year}!"
+        user = User(
+            username=candidate,
+            email=email,
+            password_hash=hash_password(default_pwd),
+            role="officer",
+            full_name=email.split("@")[0].replace(".", " ").title(),
+            active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        username_created = candidate
+
+    # Detail logging for audit
+    officer_name = "Cadre Development Profile"
+    if payload.officer_id:
+        off = db.get(Officer, payload.officer_id)
+        if off:
+            officer_name = off.name
+
+    detail_msg = f"Granted pathway study & planning access to {email}. Linked officer: {officer_name} (ID: {payload.officer_id}). Target role: {payload.target_role or 'Standard Progression'}."
+    if username_created:
+        detail_msg += f" Created account: {username_created}."
+
+    _audit(db, admin, "grant_access", "pathway", user.id, detail_msg)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Pathway planning access successfully granted to {email}.",
+        "email": email,
+        "user_id": user.id,
+        "username": user.username,
+        "new_account_created": bool(username_created),
+        "temporary_credentials": {
+            "username": user.username,
+            "temporary_password": default_pwd
+        } if default_pwd else None,
+        "access_scope": "Full access to Plan My Pathway learning curriculum, YouTube video catalog, progress tracking, and progression chat.",
+        "granted_at": datetime.now(timezone.utc).isoformat()
+    }
+
+
+@app.get("/api/pathway/grants")
+def pathway_list_grants(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    logs = db.scalars(
+        select(AuditLog)
+        .where(AuditLog.action == "grant_access", AuditLog.entity_type == "pathway")
+        .order_by(AuditLog.created_at.desc())
+        .limit(25)
+    ).all()
+    return [
+        {
+            "id": log.id,
+            "granted_by": log.username,
+            "detail": log.detail,
+            "created_at": log.created_at.isoformat() if log.created_at else None
+        }
+        for log in logs
+    ]
 
 
 
