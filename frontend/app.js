@@ -1200,10 +1200,25 @@ let currentPathwayRoadmap = null;
 let checkedPathwayItems = new Set();
 let pathwayInitialized = false;
 
+const FALLBACK_OFFICERS = [
+  { id: 1, name: 'Dr. Ramesh Kumar Sharma', department: 'National Sample Survey Office', current_role: 'Senior Statistical Officer', target_role: 'Assistant Director', readiness: 68 },
+  { id: 2, name: 'Priya Sundaram', department: 'Data Informatics & Innovation Division', current_role: 'Junior Statistical Officer', target_role: 'Senior Statistical Officer', readiness: 48 },
+  { id: 3, name: 'Amitabh Verma', department: 'National Accounts Division', current_role: 'Assistant Director', target_role: 'Deputy Director', readiness: 74 },
+  { id: 4, name: 'Sunita Rao', department: 'Economic Statistics Division', current_role: 'Junior Statistical Officer', target_role: 'Senior Statistical Officer', readiness: 52 },
+  { id: 5, name: 'Vikramaditya Sen', department: 'Price & Cost of Living Division', current_role: 'Deputy Director', target_role: 'Director', readiness: 81 }
+];
+
 async function initPathwayPage() {
   try {
     if (!officers || !officers.length) {
-      officers = await api('/api/officers');
+      try {
+        officers = await api('/api/officers');
+      } catch (e) {
+        console.warn('Using fallback officers for pathway:', e);
+      }
+    }
+    if (!officers || !officers.length) {
+      officers = FALLBACK_OFFICERS;
     }
 
     const sel = $('pathwayOfficerSelect');
@@ -1211,15 +1226,15 @@ async function initPathwayPage() {
       sel.innerHTML = officers.map(o => `<option value="${o.id}">${esc(o.name)} (${esc(o.department)})</option>`).join('');
       sel.onchange = () => onPathwayOfficerChange();
 
-      $('generatePathwayBtn').onclick = () => generatePathwayPlan();
-      $('resetPathwayBtn').onclick = () => resetPathwayPlan();
-      $('downloadPathwayPdfBtn').onclick = () => downloadPathwayPdf();
+      if ($('generatePathwayBtn')) $('generatePathwayBtn').onclick = () => generatePathwayPlan();
+      if ($('resetPathwayBtn')) $('resetPathwayBtn').onclick = () => resetPathwayPlan();
+      if ($('downloadPathwayPdfBtn')) $('downloadPathwayPdfBtn').onclick = () => downloadPathwayPdf();
 
-      const form = $('pathwayAdvisorForm');
-      if (form) {
-        form.onsubmit = e => {
+      const chatForm = $('pathwayChatForm');
+      if (chatForm) {
+        chatForm.onsubmit = e => {
           e.preventDefault();
-          const inp = $('pathwayAdvisorInput');
+          const inp = $('pathwayChatInput');
           const q = inp?.value.trim();
           if (!q) return;
           inp.value = '';
@@ -1230,11 +1245,13 @@ async function initPathwayPage() {
       document.querySelectorAll('[data-pathway-prompt]').forEach(chip => {
         chip.onclick = () => {
           const prompt = chip.dataset.pathwayPrompt;
-          sendPathwayAdvisorMessage(prompt);
+          if (prompt) sendPathwayAdvisorMessage(prompt);
         };
       });
 
       pathwayInitialized = true;
+      onPathwayOfficerChange();
+    } else if (sel && !currentPathwayRoadmap) {
       onPathwayOfficerChange();
     }
   } catch (err) {
@@ -1246,7 +1263,8 @@ function onPathwayOfficerChange() {
   const sel = $('pathwayOfficerSelect');
   if (!sel) return;
   const officerId = parseInt(sel.value, 10);
-  const officer = officers.find(o => o.id === officerId) || officers[0];
+  const officerList = (officers && officers.length) ? officers : FALLBACK_OFFICERS;
+  const officer = officerList.find(o => o.id === officerId) || officerList[0];
   if (!officer) return;
 
   const roleInput = $('pathwayCurrentRole');
@@ -1281,11 +1299,11 @@ function onPathwayOfficerChange() {
 async function generatePathwayPlan() {
   const sel = $('pathwayOfficerSelect');
   if (!sel) return;
-  const officerId = parseInt(sel.value, 10);
+  const officerId = parseInt(sel.value, 10) || 1;
   const targetRole = $('pathwayTargetRoleSelect')?.value || 'Senior Statistical Officer';
   const weeklyHours = parseInt($('pathwayWeeklyHours')?.value || '4', 10);
   const style = $('pathwayStyle')?.value || 'applied';
-  const level = $('pathwayLevel')?.value || 'operational';
+  const level = 'operational';
 
   const container = $('pathwayPhasesContainer');
   if (container) {
@@ -1294,6 +1312,14 @@ async function generatePathwayPlan() {
         <div class="cadre-pulse-bar"></div>
         <b>Evaluating Competency Deficits & YouTube Curricula…</b>
         <p>Ranking accredited video lectures and computing quantitative readiness trajectory.</p>
+      </div>
+    `;
+  }
+  const ytContainer = $('pathwayYtList');
+  if (ytContainer) {
+    ytContainer.innerHTML = `
+      <div class="empty-state" style="padding:24px;text-align:center;color:var(--muted)">
+        Retrieving verified video lectures for target gaps…
       </div>
     `;
   }
@@ -1334,90 +1360,124 @@ function renderPathwayDashboard(data) {
   if ($('pathwayProjectedReadiness')) $('pathwayProjectedReadiness').textContent = `${data.projected_readiness}%`;
   const delta = Math.max(0, Math.round(data.projected_readiness - data.current_readiness));
   if ($('pathwayUpliftBadge')) $('pathwayUpliftBadge').textContent = `+${delta}% uplift`;
-  if ($('pathwayGapsCount')) $('pathwayGapsCount').textContent = data.phases.length;
+  if ($('pathwayGapsCount')) $('pathwayGapsCount').textContent = data.phases ? data.phases.length : 0;
   if ($('pathwayWeeksCount')) $('pathwayWeeksCount').textContent = `${data.estimated_weeks} wks`;
 
-  // Render Phases & Video Items
+  // Render Left Column: Phases & Practical Milestones Checklist
   const container = $('pathwayPhasesContainer');
-  if (!container) return;
+  if (container) {
+    if (!data.phases || !data.phases.length) {
+      container.innerHTML = '<div class="empty-state" style="padding:24px;text-align:center">No competency deficits identified for this target cadre.</div>';
+    } else {
+      let html = '';
+      data.phases.forEach(ph => {
+        const sevClass = ph.gap_severity >= 50 ? 'critical' : ph.gap_severity >= 30 ? 'high' : 'moderate';
+        html += `
+          <div class="pathway-phase-card">
+            <div class="phase-card-header">
+              <h3>Phase ${ph.order}: ${esc(ph.skill)}</h3>
+              <span class="phase-severity-pill ${sevClass}">Severity: ${ph.gap_severity} &bull; ${esc(ph.severity_level)}</span>
+            </div>
+            <div class="phase-milestone-box">
+              <b>Official Practical Milestone:</b>
+              ${esc(ph.milestone)}
+            </div>
+            <table class="phase-items-table">
+              <thead>
+                <tr>
+                  <th style="width:40px;text-align:center">Done</th>
+                  <th>Verified Module</th>
+                  <th>Duration</th>
+                  <th>Score</th>
+                  <th style="text-align:right">Direct Link</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
 
-  if (!data.phases || !data.phases.length) {
-    container.innerHTML = '<div class="empty-state" style="padding:24px;text-align:center">No competency deficits identified for this target cadre.</div>';
-    return;
+        ph.items.forEach(it => {
+          const isChecked = checkedPathwayItems.has(it.id);
+          html += `
+            <tr class="${isChecked ? 'item-completed' : ''}">
+              <td style="text-align:center">
+                <input type="checkbox" class="phase-item-check" data-id="${it.id}" ${isChecked ? 'checked' : ''}>
+              </td>
+              <td>
+                <div class="phase-item-title">${esc(it.title)}</div>
+                <div class="phase-item-channel">${esc(it.channel)} &bull; <b>${esc(it.verified_standard || 'Accredited')}</b></div>
+              </td>
+              <td><span class="priority low">${it.duration_min} min</span></td>
+              <td><span class="phase-score-badge">${it.score}</span></td>
+              <td style="text-align:right">
+                <a href="${esc(it.url)}" target="_blank" rel="noreferrer" class="source-link-btn">
+                  Watch &rarr;
+                </a>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += `
+              </tbody>
+            </table>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+
+      // Bind checkbox events
+      container.querySelectorAll('.phase-item-check').forEach(chk => {
+        chk.onchange = e => {
+          const id = e.target.dataset.id;
+          if (e.target.checked) {
+            checkedPathwayItems.add(id);
+          } else {
+            checkedPathwayItems.delete(id);
+          }
+          e.target.closest('tr')?.classList.toggle('item-completed', e.target.checked);
+          updatePathwayProgress();
+        };
+      });
+    }
   }
 
-  let html = '';
-  data.phases.forEach(ph => {
-    const sevClass = ph.gap_severity >= 50 ? 'critical' : ph.gap_severity >= 30 ? 'high' : 'moderate';
-    html += `
-      <div class="pathway-phase-card">
-        <div class="phase-card-header">
-          <h3>Phase ${ph.order}: ${esc(ph.skill)}</h3>
-          <span class="phase-severity-pill ${sevClass}">Severity: ${ph.gap_severity} &bull; ${esc(ph.severity_level)}</span>
+  // Render Right Column: Dedicated YouTube Links Rectangle Box
+  const ytContainer = $('pathwayYtList');
+  if (ytContainer) {
+    let allVideos = [];
+    if (data.phases) {
+      data.phases.forEach(ph => {
+        if (ph.items) {
+          ph.items.forEach(it => {
+            allVideos.push({ ...it, phaseSkill: ph.skill, phaseOrder: ph.order });
+          });
+        }
+      });
+    }
+
+    if (!allVideos.length) {
+      ytContainer.innerHTML = '<div class="empty-state" style="padding:20px;text-align:center;color:var(--muted)">No video modules required. All target standards met.</div>';
+    } else {
+      ytContainer.innerHTML = allVideos.map(it => `
+        <div class="yt-video-card">
+          <div class="yt-card-top">
+            <h4 class="yt-card-title">${esc(it.title)}</h4>
+            <span class="yt-duration-badge">${it.duration_min} min</span>
+          </div>
+          <div class="yt-card-meta">
+            <span class="yt-card-channel">${esc(it.channel)}</span>
+            <span class="yt-card-standard">${esc(it.verified_standard || 'Accredited MoSPI/ISI Standard')}</span>
+          </div>
+          <div style="font-size:9.5px;color:var(--muted);line-height:1.4">
+            Phase ${it.phaseOrder}: <b>${esc(it.phaseSkill)}</b> &bull; Quality: <b>${it.score}/100</b>
+          </div>
+          <a href="${esc(it.url)}" target="_blank" rel="noreferrer" class="yt-pill-btn">
+            Watch on YouTube &rarr;
+          </a>
         </div>
-        <div class="phase-milestone-box">
-          <b>Official Practical Milestone:</b>
-          ${esc(ph.milestone)}
-        </div>
-        <table class="phase-items-table">
-          <thead>
-            <tr>
-              <th style="width:40px;text-align:center">Done</th>
-              <th>Verified Video Module</th>
-              <th>Channel / Provider</th>
-              <th>Duration</th>
-              <th>Score</th>
-              <th style="text-align:right">Access</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    ph.items.forEach(it => {
-      const isChecked = checkedPathwayItems.has(it.id);
-      html += `
-        <tr class="${isChecked ? 'item-completed' : ''}">
-          <td style="text-align:center">
-            <input type="checkbox" class="phase-item-check" data-id="${it.id}" ${isChecked ? 'checked' : ''}>
-          </td>
-          <td>
-            <div class="phase-item-title">${esc(it.title)}</div>
-            <div class="phase-item-channel">Focus: ${esc(it.focus || '')} &bull; <b>Standard: ${esc(it.verified_standard || 'Accredited')}</b></div>
-          </td>
-          <td>${esc(it.channel)}</td>
-          <td><span class="priority low">${it.duration_min} min</span></td>
-          <td><span class="phase-score-badge">${it.score}</span></td>
-          <td style="text-align:right">
-            <a href="${esc(it.url)}" target="_blank" rel="noreferrer" class="source-link-btn">
-              Watch on YouTube &rarr;
-            </a>
-          </td>
-        </tr>
-      `;
-    });
-
-    html += `
-          </tbody>
-        </table>
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
-
-  // Bind checkbox events
-  container.querySelectorAll('.phase-item-check').forEach(chk => {
-    chk.onchange = e => {
-      const id = e.target.dataset.id;
-      if (e.target.checked) {
-        checkedPathwayItems.add(id);
-      } else {
-        checkedPathwayItems.delete(id);
-      }
-      e.target.closest('tr')?.classList.toggle('item-completed', e.target.checked);
-      updatePathwayProgress();
-    };
-  });
+      `).join('');
+    }
+  }
 
   updatePathwayProgress();
 }
@@ -1425,7 +1485,7 @@ function renderPathwayDashboard(data) {
 function updatePathwayProgress() {
   if (!currentPathwayRoadmap || !currentPathwayRoadmap.phases) return;
   let totalItems = 0;
-  currentPathwayRoadmap.phases.forEach(ph => totalItems += ph.items.length);
+  currentPathwayRoadmap.phases.forEach(ph => totalItems += (ph.items ? ph.items.length : 0));
   const doneCount = checkedPathwayItems.size;
   const pct = totalItems > 0 ? Math.round((doneCount / totalItems) * 100) : 0;
 
@@ -1435,19 +1495,47 @@ function updatePathwayProgress() {
   if (barEl) barEl.style.width = `${pct}%`;
 }
 
+function appendPathwayChatMessage(role, htmlContent) {
+  const stream = $('pathwayChatStream');
+  if (!stream) return;
+  const msgEl = document.createElement('div');
+  msgEl.className = `chat-msg ${role === 'user' ? 'user-msg' : 'advisor-msg'}`;
+  const headerText = role === 'user' ? 'OFFICER / USER' : 'STATINTEL ADVISOR';
+  msgEl.innerHTML = `
+    <div class="chat-msg-header">${headerText}</div>
+    <div class="chat-bubble">${htmlContent}</div>
+  `;
+  stream.appendChild(msgEl);
+  stream.scrollTop = stream.scrollHeight;
+  return msgEl;
+}
+
 async function sendPathwayAdvisorMessage(userMsg) {
   if (!currentPathwayRoadmap) {
-    toast('Please generate a pathway plan first');
+    toast('Please wait for the pathway roadmap to load');
     return;
   }
-  const expBox = $('pathwayAdvisorExplanation');
+  const stream = $('pathwayChatStream');
   const statusBadge = $('pathwayAdvisorStatusBadge');
-  if (expBox) {
-    expBox.innerHTML = `
-      <b>Evaluating Cadre Inquiry…</b>
-      <p>Consulting mathematical prerequisites, gap severity, and accredited video pools.</p>
+
+  // Append user message to stream
+  appendPathwayChatMessage('user', esc(userMsg));
+
+  // Append thinking bubble
+  let thinkingEl = null;
+  if (stream) {
+    thinkingEl = document.createElement('div');
+    thinkingEl.className = 'chat-msg advisor-msg';
+    thinkingEl.innerHTML = `
+      <div class="chat-msg-header">STATINTEL ADVISOR &bull; VERIFYING</div>
+      <div class="chat-bubble" style="color:var(--muted)">
+        Consulting mathematical prerequisites, gap severity, and accredited video pools…
+      </div>
     `;
+    stream.appendChild(thinkingEl);
+    stream.scrollTop = stream.scrollHeight;
   }
+
   if (statusBadge) {
     statusBadge.textContent = 'Verifying Against Engine…';
     statusBadge.className = 'badge badge-blue';
@@ -1462,25 +1550,34 @@ async function sendPathwayAdvisorMessage(userMsg) {
       }
     });
 
+    if (thinkingEl) thinkingEl.remove();
+
     if (res.status === 'success') {
       currentPathwayRoadmap = res.roadmap;
-      if (expBox) {
-        expBox.innerHTML = `
-          <b>Action Taken: ${esc(res.action_taken.replace(/_/g, ' ').toUpperCase())}</b>
-          <p>${res.explanation}</p>
-        `;
-      }
+      appendPathwayChatMessage(
+        'advisor',
+        `<b>Action: ${esc(res.action_taken.replace(/_/g, ' ').toUpperCase())} &bull; ${esc(res.action_detail)}</b><p style="margin:6px 0 0 0">${esc(res.explanation)}</p>`
+      );
       if (statusBadge) {
-        statusBadge.textContent = 'Mechanically Verified';
+        statusBadge.textContent = 'Verified Engine';
         statusBadge.className = 'badge badge-green';
       }
       renderPathwayDashboard(currentPathwayRoadmap);
       toast(`Roadmap updated: ${res.action_detail}`);
     } else {
-      if (expBox) expBox.innerHTML = `<p class="error">Advisor Error: ${esc(res.detail || 'Unable to process')}</p>`;
+      appendPathwayChatMessage('advisor', `<p class="error" style="margin:0">Advisor Notice: ${esc(res.detail || 'Unable to process query against engine.')}</p>`);
+      if (statusBadge) {
+        statusBadge.textContent = 'Engine Notice';
+        statusBadge.className = 'badge badge-red';
+      }
     }
   } catch (err) {
-    if (expBox) expBox.innerHTML = `<p class="error">Advisor Error: ${esc(err.message)}</p>`;
+    if (thinkingEl) thinkingEl.remove();
+    appendPathwayChatMessage('advisor', `<p class="error" style="margin:0">Advisor Error: ${esc(err.message)}</p>`);
+    if (statusBadge) {
+      statusBadge.textContent = 'Error';
+      statusBadge.className = 'badge badge-red';
+    }
   }
 }
 
@@ -1492,12 +1589,16 @@ async function downloadPathwayPdf() {
 
   // Inject checkbox status into roadmap for PDF export
   const exportRoadmap = JSON.parse(JSON.stringify(currentPathwayRoadmap));
-  exportRoadmap.phases.forEach(ph => {
-    ph.items.forEach(it => {
-      it.status = checkedPathwayItems.has(it.id) ? 'completed' : 'todo';
-      it.checked = checkedPathwayItems.has(it.id);
+  if (exportRoadmap.phases) {
+    exportRoadmap.phases.forEach(ph => {
+      if (ph.items) {
+        ph.items.forEach(it => {
+          it.status = checkedPathwayItems.has(it.id) ? 'completed' : 'todo';
+          it.checked = checkedPathwayItems.has(it.id);
+        });
+      }
     });
-  });
+  }
 
   try {
     toast('Generating Official Pathway Dossier PDF…');
@@ -1510,7 +1611,10 @@ async function downloadPathwayPdf() {
       body: JSON.stringify({ roadmap: exportRoadmap })
     });
 
-    if (!res.ok) throw new Error((await res.json()).detail || 'PDF Export failed');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || 'PDF Export failed');
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
