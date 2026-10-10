@@ -128,7 +128,8 @@ $('logoutBtn').onclick = () => logout();
 const pageLabels = {
   overview: 'Overview', analytics: 'Analytics', officers: 'Officer profiles',
   skills: 'Skill intelligence', learning: 'Learning catalogue',
-  roles: 'Role registry', graph: 'Knowledge graph', reports: 'Reports & exports'
+  roles: 'Role registry', graph: 'Knowledge graph', reports: 'Reports & exports',
+  pathway: 'Plan my pathway'
 };
 
 function navigate(page) {
@@ -136,6 +137,7 @@ function navigate(page) {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
   $('pageCrumb').textContent = pageLabels[page] || page;
   if (page === 'graph') { renderGraph(); initCopilotHandlers(); }
+  if (page === 'pathway') initPathwayPage();
   if (page === 'skills') loadGaps();
   if (page === 'learning') loadCourses();
   if (page === 'roles') loadRoles();
@@ -1192,6 +1194,336 @@ if ($('reportPitchPdf')) {
     window.open('/api/export/pitch-dossier.pdf', '_blank');
   };
 }
+
+// ── Plan My Pathway Controller ─────────────────────────────────────
+let currentPathwayRoadmap = null;
+let checkedPathwayItems = new Set();
+let pathwayInitialized = false;
+
+async function initPathwayPage() {
+  try {
+    if (!officers || !officers.length) {
+      officers = await api('/api/officers');
+    }
+
+    const sel = $('pathwayOfficerSelect');
+    if (sel && (!sel.children.length || !pathwayInitialized)) {
+      sel.innerHTML = officers.map(o => `<option value="${o.id}">${esc(o.name)} (${esc(o.department)})</option>`).join('');
+      sel.onchange = () => onPathwayOfficerChange();
+
+      $('generatePathwayBtn').onclick = () => generatePathwayPlan();
+      $('resetPathwayBtn').onclick = () => resetPathwayPlan();
+      $('downloadPathwayPdfBtn').onclick = () => downloadPathwayPdf();
+
+      const form = $('pathwayAdvisorForm');
+      if (form) {
+        form.onsubmit = e => {
+          e.preventDefault();
+          const inp = $('pathwayAdvisorInput');
+          const q = inp?.value.trim();
+          if (!q) return;
+          inp.value = '';
+          sendPathwayAdvisorMessage(q);
+        };
+      }
+
+      document.querySelectorAll('[data-pathway-prompt]').forEach(chip => {
+        chip.onclick = () => {
+          const prompt = chip.dataset.pathwayPrompt;
+          sendPathwayAdvisorMessage(prompt);
+        };
+      });
+
+      pathwayInitialized = true;
+      onPathwayOfficerChange();
+    }
+  } catch (err) {
+    console.error('Pathway init error:', err);
+  }
+}
+
+function onPathwayOfficerChange() {
+  const sel = $('pathwayOfficerSelect');
+  if (!sel) return;
+  const officerId = parseInt(sel.value, 10);
+  const officer = officers.find(o => o.id === officerId) || officers[0];
+  if (!officer) return;
+
+  const roleInput = $('pathwayCurrentRole');
+  if (roleInput) roleInput.value = officer.current_role || 'Junior Statistical Officer';
+
+  // Target role options using our official cadre hierarchy
+  const targetSel = $('pathwayTargetRoleSelect');
+  if (targetSel) {
+    const currIdx = CADRE_ORDER.findIndex(x => x.toLowerCase() === (officer.current_role || '').toLowerCase());
+    let higherRoles = [];
+    if (currIdx !== -1) {
+      higherRoles = CADRE_ORDER.filter((r, idx) => idx > currIdx);
+    } else {
+      higherRoles = CADRE_ORDER.filter(r => r.toLowerCase() !== (officer.current_role || '').toLowerCase());
+    }
+    if (!higherRoles.length) {
+      higherRoles = ['Senior Cadre Specialization', 'Principal Statistical Advisor'];
+    }
+    targetSel.innerHTML = higherRoles.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+
+    if (higherRoles.includes(officer.target_role)) {
+      targetSel.value = officer.target_role;
+    } else {
+      targetSel.selectedIndex = 0;
+    }
+    targetSel.onchange = () => generatePathwayPlan();
+  }
+
+  generatePathwayPlan();
+}
+
+async function generatePathwayPlan() {
+  const sel = $('pathwayOfficerSelect');
+  if (!sel) return;
+  const officerId = parseInt(sel.value, 10);
+  const targetRole = $('pathwayTargetRoleSelect')?.value || 'Senior Statistical Officer';
+  const weeklyHours = parseInt($('pathwayWeeklyHours')?.value || '4', 10);
+  const style = $('pathwayStyle')?.value || 'applied';
+  const level = $('pathwayLevel')?.value || 'operational';
+
+  const container = $('pathwayPhasesContainer');
+  if (container) {
+    container.innerHTML = `
+      <div class="cadre-analyzing-box" style="margin:20px">
+        <div class="cadre-pulse-bar"></div>
+        <b>Evaluating Competency Deficits & YouTube Curricula…</b>
+        <p>Ranking accredited video lectures and computing quantitative readiness trajectory.</p>
+      </div>
+    `;
+  }
+
+  try {
+    const res = await api('/api/pathway/generate', {
+      method: 'POST',
+      body: {
+        officer_id: officerId,
+        target_role: targetRole,
+        weekly_hours: weeklyHours,
+        preferred_style: style,
+        content_level: level
+      }
+    });
+
+    if (res.status === 'success') {
+      currentPathwayRoadmap = res;
+      checkedPathwayItems.clear();
+      renderPathwayDashboard(res);
+    } else {
+      if (container) container.innerHTML = `<p class="error">Plan Generation Error: ${esc(res.detail || 'Failed')}</p>`;
+    }
+  } catch (err) {
+    if (container) container.innerHTML = `<p class="error">Plan Generation Error: ${esc(err.message)}</p>`;
+  }
+}
+
+function resetPathwayPlan() {
+  checkedPathwayItems.clear();
+  generatePathwayPlan();
+  toast('Pathway reset to baseline standards');
+}
+
+function renderPathwayDashboard(data) {
+  // Update metric strip
+  if ($('pathwayCurrentReadiness')) $('pathwayCurrentReadiness').textContent = `${data.current_readiness}%`;
+  if ($('pathwayProjectedReadiness')) $('pathwayProjectedReadiness').textContent = `${data.projected_readiness}%`;
+  const delta = Math.max(0, Math.round(data.projected_readiness - data.current_readiness));
+  if ($('pathwayUpliftBadge')) $('pathwayUpliftBadge').textContent = `+${delta}% uplift`;
+  if ($('pathwayGapsCount')) $('pathwayGapsCount').textContent = data.phases.length;
+  if ($('pathwayWeeksCount')) $('pathwayWeeksCount').textContent = `${data.estimated_weeks} wks`;
+
+  // Render Phases & Video Items
+  const container = $('pathwayPhasesContainer');
+  if (!container) return;
+
+  if (!data.phases || !data.phases.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:24px;text-align:center">No competency deficits identified for this target cadre.</div>';
+    return;
+  }
+
+  let html = '';
+  data.phases.forEach(ph => {
+    const sevClass = ph.gap_severity >= 50 ? 'critical' : ph.gap_severity >= 30 ? 'high' : 'moderate';
+    html += `
+      <div class="pathway-phase-card">
+        <div class="phase-card-header">
+          <h3>Phase ${ph.order}: ${esc(ph.skill)}</h3>
+          <span class="phase-severity-pill ${sevClass}">Severity: ${ph.gap_severity} &bull; ${esc(ph.severity_level)}</span>
+        </div>
+        <div class="phase-milestone-box">
+          <b>Official Practical Milestone:</b>
+          ${esc(ph.milestone)}
+        </div>
+        <table class="phase-items-table">
+          <thead>
+            <tr>
+              <th style="width:40px;text-align:center">Done</th>
+              <th>Verified Video Module</th>
+              <th>Channel / Provider</th>
+              <th>Duration</th>
+              <th>Score</th>
+              <th style="text-align:right">Access</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    ph.items.forEach(it => {
+      const isChecked = checkedPathwayItems.has(it.id);
+      html += `
+        <tr class="${isChecked ? 'item-completed' : ''}">
+          <td style="text-align:center">
+            <input type="checkbox" class="phase-item-check" data-id="${it.id}" ${isChecked ? 'checked' : ''}>
+          </td>
+          <td>
+            <div class="phase-item-title">${esc(it.title)}</div>
+            <div class="phase-item-channel">Focus: ${esc(it.focus || '')} &bull; <b>Standard: ${esc(it.verified_standard || 'Accredited')}</b></div>
+          </td>
+          <td>${esc(it.channel)}</td>
+          <td><span class="priority low">${it.duration_min} min</span></td>
+          <td><span class="phase-score-badge">${it.score}</span></td>
+          <td style="text-align:right">
+            <a href="${esc(it.url)}" target="_blank" rel="noreferrer" class="source-link-btn">
+              Watch on YouTube &rarr;
+            </a>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+
+  // Bind checkbox events
+  container.querySelectorAll('.phase-item-check').forEach(chk => {
+    chk.onchange = e => {
+      const id = e.target.dataset.id;
+      if (e.target.checked) {
+        checkedPathwayItems.add(id);
+      } else {
+        checkedPathwayItems.delete(id);
+      }
+      e.target.closest('tr')?.classList.toggle('item-completed', e.target.checked);
+      updatePathwayProgress();
+    };
+  });
+
+  updatePathwayProgress();
+}
+
+function updatePathwayProgress() {
+  if (!currentPathwayRoadmap || !currentPathwayRoadmap.phases) return;
+  let totalItems = 0;
+  currentPathwayRoadmap.phases.forEach(ph => totalItems += ph.items.length);
+  const doneCount = checkedPathwayItems.size;
+  const pct = totalItems > 0 ? Math.round((doneCount / totalItems) * 100) : 0;
+
+  const textEl = $('pathwayProgressText');
+  const barEl = $('pathwayProgressBarFill');
+  if (textEl) textEl.textContent = `${doneCount} of ${totalItems} modules completed (${pct}%)`;
+  if (barEl) barEl.style.width = `${pct}%`;
+}
+
+async function sendPathwayAdvisorMessage(userMsg) {
+  if (!currentPathwayRoadmap) {
+    toast('Please generate a pathway plan first');
+    return;
+  }
+  const expBox = $('pathwayAdvisorExplanation');
+  const statusBadge = $('pathwayAdvisorStatusBadge');
+  if (expBox) {
+    expBox.innerHTML = `
+      <b>Evaluating Cadre Inquiry…</b>
+      <p>Consulting mathematical prerequisites, gap severity, and accredited video pools.</p>
+    `;
+  }
+  if (statusBadge) {
+    statusBadge.textContent = 'Verifying Against Engine…';
+    statusBadge.className = 'badge badge-blue';
+  }
+
+  try {
+    const res = await api('/api/pathway/converse', {
+      method: 'POST',
+      body: {
+        roadmap: currentPathwayRoadmap,
+        message: userMsg
+      }
+    });
+
+    if (res.status === 'success') {
+      currentPathwayRoadmap = res.roadmap;
+      if (expBox) {
+        expBox.innerHTML = `
+          <b>Action Taken: ${esc(res.action_taken.replace(/_/g, ' ').toUpperCase())}</b>
+          <p>${res.explanation}</p>
+        `;
+      }
+      if (statusBadge) {
+        statusBadge.textContent = 'Mechanically Verified';
+        statusBadge.className = 'badge badge-green';
+      }
+      renderPathwayDashboard(currentPathwayRoadmap);
+      toast(`Roadmap updated: ${res.action_detail}`);
+    } else {
+      if (expBox) expBox.innerHTML = `<p class="error">Advisor Error: ${esc(res.detail || 'Unable to process')}</p>`;
+    }
+  } catch (err) {
+    if (expBox) expBox.innerHTML = `<p class="error">Advisor Error: ${esc(err.message)}</p>`;
+  }
+}
+
+async function downloadPathwayPdf() {
+  if (!currentPathwayRoadmap) {
+    toast('Please generate a pathway first');
+    return;
+  }
+
+  // Inject checkbox status into roadmap for PDF export
+  const exportRoadmap = JSON.parse(JSON.stringify(currentPathwayRoadmap));
+  exportRoadmap.phases.forEach(ph => {
+    ph.items.forEach(it => {
+      it.status = checkedPathwayItems.has(it.id) ? 'completed' : 'todo';
+      it.checked = checkedPathwayItems.has(it.id);
+    });
+  });
+
+  try {
+    toast('Generating Official Pathway Dossier PDF…');
+    const res = await fetch('/api/pathway/export-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ roadmap: exportRoadmap })
+    });
+
+    if (!res.ok) throw new Error((await res.json()).detail || 'PDF Export failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `statintel-pathway-checklist-officer-${exportRoadmap.officer_id || 'dossier'}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Dossier PDF downloaded successfully');
+  } catch (err) {
+    toast(`Export error: ${err.message}`);
+  }
+}
+
 
 // ── Boot ───────────────────────────────────────────────────────────
 (async () => { if (token) await startApp(); })();

@@ -76,6 +76,7 @@
       <button data-page="roles"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/></svg><span>Role registry</span></button>
       <button data-page="graph"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="4" r="2" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="4" r="2" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="12" r="2" stroke="currentColor" stroke-width="1.3"/><line x1="5.5" y1="5.5" x2="7" y2="10.5" stroke="currentColor" stroke-width="1"/><line x1="10.5" y1="5.5" x2="9" y2="10.5" stroke="currentColor" stroke-width="1"/><line x1="6" y1="4" x2="10" y2="4" stroke="currentColor" stroke-width="1"/></svg><span>Knowledge graph</span></button>
       <button data-page="reports"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="5" x2="11" y2="5" stroke="currentColor" stroke-width="1.2"/><line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.2"/><line x1="5" y1="11" x2="9" y2="11" stroke="currentColor" stroke-width="1.2"/></svg><span>Reports & exports</span></button>
+      <button data-page="pathway"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 13 L6 9 L9 11 L14 4" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="14" cy="4" r="1.5" fill="currentColor"/><line x1="2" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.2"/></svg><span>Plan my pathway</span></button>
     </nav>
     <div class="sidebar-bottom">
       <div class="system-card">
@@ -490,6 +491,147 @@
             <label><input type="checkbox"> Verify training providers, course URLs and availability</label>
             <label><input type="checkbox"> Add audit logging, backups, HTTPS and monitoring</label>
             <label><input type="checkbox"> Independently validate readiness calculations and recommendations</label>
+          </div>
+        </article>
+      </section>
+
+      <!-- ═══════════ PLAN MY PATHWAY PAGE ═══════════ -->
+      <section class="page" id="page-pathway">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">CAPABILITY DEVELOPMENT &bull; COMPETENCY ROADMAP PLANNING</p>
+            <h1>Plan my pathway</h1>
+            <p class="muted">Individualized career progression roadmap, verified YouTube & institutional curriculum curation, and quantitative readiness uplift tracking.</p>
+          </div>
+          <div class="button-row">
+            <button class="primary" id="downloadPathwayPdfBtn">↓ Download Pathway Dossier (PDF)</button>
+            <button class="secondary" id="resetPathwayBtn">↺ Reset Plan</button>
+          </div>
+        </div>
+
+        <!-- Officer Diagnosis & Parameters -->
+        <div class="two-col">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Officer & Cadre Diagnosis</h2>
+                <p>Select an officer profile to evaluate specific competency gaps against target standards.</p>
+              </div>
+            </div>
+            <div class="pathway-form-grid" style="padding:16px">
+              <label>Officer Profile
+                <select id="pathwayOfficerSelect"></select>
+              </label>
+              <div class="two-col gap-sm" style="margin-top:10px">
+                <label>Current Cadre Post
+                  <input id="pathwayCurrentRole" readonly class="input-readonly">
+                </label>
+                <label>Target Promotion Cadre
+                  <select id="pathwayTargetRoleSelect"></select>
+                </label>
+              </div>
+              <div class="pathway-metric-strip" style="margin-top:14px">
+                <div class="mini-kpi">
+                  <small>BASELINE READINESS</small>
+                  <strong id="pathwayCurrentReadiness">—%</strong>
+                </div>
+                <div class="mini-kpi kpi-highlight">
+                  <small>PROJECTED READINESS</small>
+                  <strong id="pathwayProjectedReadiness">—%</strong>
+                  <span class="kpi-delta" id="pathwayUpliftBadge">+0%</span>
+                </div>
+                <div class="mini-kpi">
+                  <small>OPEN GAPS</small>
+                  <strong id="pathwayGapsCount">—</strong>
+                </div>
+                <div class="mini-kpi">
+                  <small>EST. COMPLETION</small>
+                  <strong id="pathwayWeeksCount">— wks</strong>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Study Parameters & Pace</h2>
+                <p>Configure weekly hours and learning delivery to generate structured progression.</p>
+              </div>
+            </div>
+            <div class="pathway-form-grid" style="padding:16px">
+              <label>Weekly Time Commitment
+                <select id="pathwayWeeklyHours">
+                  <option value="2">2 hours / week (Gentle administrative pace)</option>
+                  <option value="4" selected>4 hours / week (Standard cadre development)</option>
+                  <option value="6">6 hours / week (Accelerated transition)</option>
+                  <option value="8">8 hours / week (Intensive fast-track)</option>
+                </select>
+              </label>
+              <div class="two-col gap-sm" style="margin-top:10px">
+                <label>Pedagogical Format
+                  <select id="pathwayStyle">
+                    <option value="applied" selected>Applied Code & Survey Projects</option>
+                    <option value="lectures">Structured Academic Lectures</option>
+                  </select>
+                </label>
+                <label>Competency Focus
+                  <select id="pathwayLevel">
+                    <option value="operational" selected>Operational Standards & Reproducibility</option>
+                    <option value="methodological">Advanced Survey Methodology (ISI/UNSD)</option>
+                    <option value="governance">Institutional Governance & OECD AI Standards</option>
+                  </select>
+                </label>
+              </div>
+              <button class="primary wide" id="generatePathwayBtn" style="margin-top:16px">Generate Structured Roadmap &rarr;</button>
+            </div>
+          </article>
+        </div>
+
+        <!-- Roadmap Workspace -->
+        <article class="panel gap-top">
+          <div class="panel-head">
+            <div>
+              <h2>Progression Roadmap & Verified YouTube Curricula</h2>
+              <p>Sequenced by mathematical gap severity and prerequisite dependency. Every video is verified against institutional allowlists.</p>
+            </div>
+            <div class="pathway-progress-stat" id="pathwayProgressStat">
+              <span id="pathwayProgressText">0 of 0 modules completed (0%)</span>
+              <div class="pathway-progress-bar"><div id="pathwayProgressBarFill" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div id="pathwayPhasesContainer" class="pathway-phases-wrap">
+            <div class="empty-state" style="padding:32px;text-align:center;color:var(--muted)">
+              Click "Generate Structured Roadmap" above to formulate the verified learning sequence.
+            </div>
+          </div>
+        </article>
+
+        <!-- Grounded Pathway Advisor (Interpreter, Not Oracle) -->
+        <article class="panel gap-top" style="border-top:3px solid var(--accent)">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow" style="color:var(--accent);margin-bottom:2px">GROUNDED ANALYST &bull; ZERO UNGROUNDED CLAIMS</p>
+              <h2>Pathway Progression Advisor</h2>
+              <p>Discuss and adjust the roadmap. All changes and explanations are mechanically checked against verified database records.</p>
+            </div>
+            <span class="badge badge-green" id="pathwayAdvisorStatusBadge">Mechanically Verified</span>
+          </div>
+          <div class="advisor-content" style="padding:16px">
+            <div class="advisor-explanation-box" id="pathwayAdvisorExplanation">
+              <b>Roadmap Optimization Notice:</b>
+              <p>Select your preferred parameters above or ask the advisor to adjust your weekly schedule or phase sequencing.</p>
+            </div>
+            <div class="quick-chips" style="margin-top:12px">
+              <span class="chip" data-pathway-prompt="Prioritize Applied Sampling first">Prioritize Applied Sampling first</span>
+              <span class="chip" data-pathway-prompt="Adjust pace to 6 hours per week">Adjust pace to 6 hours/week</span>
+              <span class="chip" data-pathway-prompt="Make schedule lighter">Make schedule lighter</span>
+              <span class="chip" data-pathway-prompt="Explain mathematical rationale for Phase 1 priority">Explain Phase 1 priority</span>
+            </div>
+            <form id="pathwayAdvisorForm" class="copilot-input-row" style="margin-top:12px">
+              <input id="pathwayAdvisorInput" placeholder="Inquire on roadmap sequencing rationale, or request schedule rebalancing…" autocomplete="off">
+              <button class="primary" type="submit">Inquire &rarr;</button>
+            </form>
           </div>
         </article>
       </section>

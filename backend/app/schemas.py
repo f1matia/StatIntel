@@ -78,3 +78,21 @@ class CopilotInput(BaseModel):
     target_role: Optional[str] = Field(default="Senior Statistical Officer", max_length=180)
     skill_focus: Optional[str] = None
     message: Optional[str] = None
+
+
+class PathwayGenerateInput(BaseModel):
+    officer_id: int = Field(default=1)
+    target_role: Optional[str] = None
+    weekly_hours: int = Field(default=4, ge=1, le=40)
+    preferred_style: str = Field(default="applied")
+    content_level: str = Field(default="operational")
+
+
+class PathwayConverseInput(BaseModel):
+    roadmap: dict
+    message: str = Field(min_length=1)
+
+
+class PathwayPdfInput(BaseModel):
+    roadmap: dict
+

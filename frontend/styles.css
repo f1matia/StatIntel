@@ -976,6 +976,219 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .checklist label { display: flex; align-items: center; gap: 10px; font-size: 11px; cursor: pointer; }
 .checklist input[type="checkbox"] { width: auto; accent-color: var(--accent); }
 
+/* ── Plan My Pathway ─────────────────────────────────────────────── */
+.pathway-form-grid label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.input-readonly {
+  background: var(--panel2) !important;
+  color: var(--ink) !important;
+  font-weight: 600;
+  border-color: var(--line) !important;
+  cursor: not-allowed;
+}
+.pathway-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+.mini-kpi {
+  text-align: center;
+  position: relative;
+}
+.mini-kpi small {
+  display: block;
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.mini-kpi strong {
+  font: 700 16px Georgia, serif;
+  color: var(--ink);
+}
+.mini-kpi.kpi-highlight strong {
+  color: var(--green);
+}
+.kpi-delta {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--green);
+  background: var(--green-light);
+  border-radius: 2px;
+  padding: 1px 4px;
+  margin-top: 2px;
+}
+
+.pathway-progress-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.pathway-progress-bar {
+  width: 130px;
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+#pathwayProgressBarFill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 300ms ease;
+}
+
+.pathway-phases-wrap {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+.pathway-phase-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.phase-card-header {
+  padding: 12px 16px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.phase-card-header h3 {
+  font: 700 13px Georgia, serif;
+  margin: 0;
+  color: var(--ink);
+}
+.phase-severity-pill {
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 2px 7px;
+  border-radius: 2px;
+}
+.phase-severity-pill.critical { background: var(--red-light); color: var(--accent); border: 1px solid #d4a99e; }
+.phase-severity-pill.high { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.phase-severity-pill.moderate { background: var(--blue-light); color: var(--blue); border: 1px solid #b5d2e0; }
+
+.phase-milestone-box {
+  padding: 10px 16px;
+  background: #fbfaf6;
+  border-bottom: 1px solid var(--line);
+  font-size: 10.5px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.phase-milestone-box b {
+  color: var(--accent);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.phase-items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.phase-items-table th {
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  background: var(--panel2);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.phase-items-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10.5px;
+  vertical-align: middle;
+}
+.phase-items-table tr:last-child td {
+  border-bottom: none;
+}
+.phase-items-table tr.item-completed {
+  background: rgba(45, 102, 72, 0.04);
+}
+.phase-items-table tr.item-completed .phase-item-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.phase-item-check {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+.phase-item-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+.phase-item-channel {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.phase-item-channel b {
+  color: var(--blue);
+  font-weight: 700;
+}
+.phase-score-badge {
+  font-size: 8.5px;
+  font-weight: 800;
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  border-radius: 2px;
+  color: var(--ink);
+}
+
+.advisor-explanation-box {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.advisor-explanation-box b {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.advisor-explanation-box p {
+  margin: 0;
+}
+
 /* ── Heatmap ─────────────────────────────────────────────────────── */
 .heatmap-container { padding: 16px; overflow-x: auto; }
 .heatmap-table { border-collapse: collapse; width: 100%; min-width: 600px; }

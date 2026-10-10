@@ -10,7 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 from .database import Base, engine, get_db, SessionLocal
 from .models import User, Officer, Skill, Role, RoleSkill, Course, AuditLog
-from .schemas import LoginInput, RegisterInput, UserUpdate, OfficerInput, SkillInput, RoleInput, CourseInput, CopilotInput
+from .schemas import (
+    LoginInput, RegisterInput, UserUpdate, OfficerInput, SkillInput, RoleInput,
+    CourseInput, CopilotInput, PathwayGenerateInput, PathwayConverseInput, PathwayPdfInput
+)
 from .security import hash_password, verify_password, create_token, current_user, require_admin
 from .analytics import (
     compute_workforce_analytics, compute_gap_severity, compute_competency_heatmap,
@@ -18,6 +21,9 @@ from .analytics import (
     _profile_mentions_skill, _normalize, SKILL_ALIASES,
 )
 from .llm import generate_career_pathway
+from .pathway import (
+    generate_structured_roadmap, execute_grounded_conversation, generate_pathway_pdf_dossier
+)
 
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 
@@ -633,6 +639,41 @@ def career_copilot(payload: CopilotInput, db: Session = Depends(get_db), user: U
         user_query=payload.message,
         db=db
     )
+
+
+# ── Pathway Planner & Grounded Analyst ─────────────────────────────────────
+
+@app.post("/api/pathway/generate")
+def pathway_generate(payload: PathwayGenerateInput, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return generate_structured_roadmap(
+        officer_id=payload.officer_id,
+        target_role=payload.target_role,
+        weekly_hours=payload.weekly_hours,
+        preferred_style=payload.preferred_style,
+        content_level=payload.content_level,
+        db=db
+    )
+
+
+@app.post("/api/pathway/converse")
+def pathway_converse(payload: PathwayConverseInput, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return execute_grounded_conversation(
+        current_roadmap=payload.roadmap,
+        user_message=payload.message,
+        db=db
+    )
+
+
+@app.post("/api/pathway/export-pdf")
+def pathway_export_pdf(payload: PathwayPdfInput, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    pdf_bytes = generate_pathway_pdf_dossier(payload.roadmap)
+    officer_id = payload.roadmap.get("officer_id", "dossier")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=statintel-pathway-checklist-officer-{officer_id}.pdf"}
+    )
+
 
 
 # ── Static files & SPA fallback ────────────────────────────────────────────
