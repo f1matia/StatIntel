@@ -1385,7 +1385,15 @@ async function generatePathwayPlan() {
   const targetRole = $('pathwayTargetRoleSelect')?.value || 'Senior Statistical Officer';
   const weeklyHours = parseInt($('pathwayWeeklyHours')?.value || '4', 10);
   const style = $('pathwayStyle')?.value || 'applied';
-  const level = 'operational';
+
+  // Dynamically deduce tier for content level
+  const trLower = targetRole.toLowerCase();
+  let level = 'operational';
+  if (trLower.includes('deputy director') || trLower.includes('director') || trLower.includes('iss') || trLower.includes('advisor')) {
+    level = 'executive';
+  } else if (trLower.includes('assistant director') || trLower.includes('senior statistical')) {
+    level = 'senior';
+  }
 
   const container = $('pathwayPhasesContainer');
   if (container) {
@@ -1451,7 +1459,21 @@ function renderPathwayDashboard(data) {
     if (!data.phases || !data.phases.length) {
       container.innerHTML = '<div class="empty-state" style="padding:24px;text-align:center">No competency deficits identified for this target cadre.</div>';
     } else {
-      let html = '';
+      let html = `
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:2px">
+          <div>
+            <span class="phase-severity-pill ${data.cadre_tier === 'executive' ? 'critical' : data.cadre_tier === 'senior' ? 'high' : 'moderate'}" style="font-size:10px;text-transform:uppercase">
+              ${esc(data.tier_title || (data.cadre_tier ? data.cadre_tier.toUpperCase() : 'CADRE PROGRAM'))}
+            </span>
+            <div style="font-size:11.5px;color:var(--ink);margin-top:4px">
+              Target Cadre: <b>${esc(data.target_role)}</b> &bull; Current Post: <b>${esc(data.current_role)}</b>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);text-align:right">
+            ${data.open_gaps_count || (data.phases ? data.phases.length : 0)} Competency Deficits Identified
+          </div>
+        </div>
+      `;
       data.phases.forEach(ph => {
         const sevClass = ph.gap_severity >= 50 ? 'critical' : ph.gap_severity >= 30 ? 'high' : 'moderate';
         html += `
